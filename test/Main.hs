@@ -21,11 +21,30 @@ tests =
                   "\n"
                   [ "module Foo where",
                     "-- hello world",
+                    "--",
+                    "-- > test",
+                    "-- > ==> 1",
+                    "--",
+                    "-- > test + test",
+                    "-- > ==> 2",
                     "test = 1"
                   ]
               )
               |> Expect.equal
-                [ HVE.Comment " hello world"
+                [ HVE.Comment <| Text.join "\n" [" hello world", ""],
+                  HVE.ExampleComment
+                    <| Text.join
+                      "\n"
+                      [ "test",
+                        "==> 1"
+                      ],
+                  HVE.Comment "",
+                  HVE.ExampleComment
+                    <| Text.join
+                      "\n"
+                      [ "test + test",
+                        "==> 2"
+                      ]
                 ]
         ]
     ]
