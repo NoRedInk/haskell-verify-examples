@@ -14,9 +14,9 @@ tests =
   describe
     "Haskell.Verified.Examples"
     [ describe
-        "comments"
+        "moduleWithExamples"
         [ test "returns all comments" <| \() ->
-            HVE.comments
+            HVE.moduleWithExamples
               ( Text.join
                   "\n"
                   [ "module Foo where",
@@ -31,6 +31,6 @@ tests =
                   ]
               )
               |> Debug.toString
-              |> Expect.equalToContentsOf "test/golden-results/comments.json"
+              |> Expect.equalToContentsOf "test/golden-results/moduleWithExamples.json"
         ]
     ]
