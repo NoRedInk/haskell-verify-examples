@@ -16,9 +16,16 @@ tests =
     [ describe
         "comments"
         [ test "returns all comments" <| \() ->
-            HVE.comments "-- hello world"
+            HVE.comments
+              ( Text.join
+                  "\n"
+                  [ "module Foo where",
+                    "-- hello world",
+                    "test = 1"
+                  ]
+              )
               |> Expect.equal
-                [ HVE.Comment "-- hello world"
+                [ HVE.Comment " hello world"
                 ]
         ]
     ]
