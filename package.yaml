@@ -1,0 +1,64 @@
+name: haskell-verified-examples
+synopsis: Verify examples in your docs.
+description: Please see the README at <https://github.com/NoRedInk/haskell-verified-examples/tree/trunk/#readme>.
+author: NoRedInk
+version: 0.0.0.1
+maintainer: haskell-open-source@noredink.com
+copyright: 2021 NoRedInk Corp.
+github: NoRedInk/haskell-verified-examples
+license-file: LICENSE
+category: Web
+extra-source-files:
+  - README.md
+  - LICENSE
+library:
+  dependencies:
+  - base >= 4.12.0.0 && < 4.16
+  - nri-prelude >= 0.1.0.0 && < 0.7
+  - text >= 1.2.3.1 && < 1.3
+  # exposed-modules:
+  # - Http
+  # - Http.Mock
+  source-dirs: src
+tests:
+  spec:
+    dependencies:
+    - aeson >= 1.4.6.0 && < 1.6
+    - base >= 4.12.0.0 && < 4.16
+    - nri-prelude >= 0.1.0.0 && < 0.7
+    - text >= 1.2.3.1 && < 1.3
+    main: Main.hs
+    source-dirs:
+    - src
+    - test
+    # We intentionally do not add threaded ghc-options for tests. These would
+    # cause tests to run in parallel, which introduces flakiness in this test
+    # suite. The suite creates a number of web servers that are supposed to get
+    # unique ports, but if we start them in parallel this will not always work.
+    ghc-options:
+      - -fno-warn-type-defaults
+default-extensions:
+  - DataKinds
+  - DeriveGeneric
+  - FlexibleContexts
+  - FlexibleInstances
+  - GeneralizedNewtypeDeriving
+  - MultiParamTypeClasses
+  - NamedFieldPuns
+  - NoImplicitPrelude
+  - OverloadedStrings
+  - PartialTypeSignatures
+  - ScopedTypeVariables
+  - Strict
+  - TypeOperators
+  - ExtendedDefaultRules
+  - NumericUnderscores
+ghc-options:
+  - -Wall
+  - -Wcompat
+  - -Widentities
+  - -Wincomplete-record-updates
+  - -Wpartial-fields
+  - -Wredundant-constraints
+  - -Wincomplete-uni-patterns
+  - -fplugin=NriPrelude.Plugin
