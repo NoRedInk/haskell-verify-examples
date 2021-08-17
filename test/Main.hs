@@ -30,21 +30,7 @@ tests =
                     "test = 1"
                   ]
               )
-              |> Expect.equal
-                [ HVE.Comment <| Text.join "\n" [" hello world", ""],
-                  HVE.ExampleComment
-                    <| Text.join
-                      "\n"
-                      [ "test",
-                        "==> 1"
-                      ],
-                  HVE.Comment "",
-                  HVE.ExampleComment
-                    <| Text.join
-                      "\n"
-                      [ "test + test",
-                        "==> 2"
-                      ]
-                ]
+              |> Debug.toString
+              |> Expect.equalToContentsOf "test/golden-results/comments.json"
         ]
     ]
