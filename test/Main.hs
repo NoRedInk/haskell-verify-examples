@@ -61,7 +61,7 @@ tests =
                 |> expectJust
             result <-
               example
-                |> HVE.run
+                |> HVE.run []
                 |> Expect.fromIO
             result
               |> Debug.toString
@@ -72,11 +72,58 @@ tests =
                 |> expectJust
             result <-
               example
-                |> HVE.run
+                |> HVE.run []
                 |> Expect.fromIO
             result
               |> Debug.toString
-              |> Expect.equalToContentsOf "test/golden-results/run-fails.hs"
+              |> Expect.equalToContentsOf "test/golden-results/run-fails.hs",
+          test "runs multiline example (succeeds)" <| \() ->
+            do
+              example <-
+                [ "[ 1",
+                  ", 2",
+                  ", 3",
+                  "]",
+                  "|> List.map (+ 1)",
+                  "==>",
+                  "[ 2",
+                  ", 3",
+                  ", 4",
+                  "]"
+                  ]
+                  |> Text.join "\n"
+                  |> HVE.exampleFromText
+                  |> expectJust
+              result <-
+                example
+                  |> HVE.run ["List"]
+                  |> Expect.fromIO
+              result
+                |> Debug.toString
+                |> Expect.equalToContentsOf "test/golden-results/run-multiline-succeeds.hs",
+          test "runs multiline example (fails)" <| \() -> do
+            example <-
+              [ "[ 1",
+                ", 2",
+                ", 3",
+                "]",
+                "|> List.map (+ 1)",
+                "==>",
+                "[ 2",
+                ", 3",
+                ", 5",
+                "]"
+                ]
+                |> Text.join "\n"
+                |> HVE.exampleFromText
+                |> expectJust
+            result <-
+              example
+                |> HVE.run ["List"]
+                |> Expect.fromIO
+            result
+              |> Debug.toString
+              |> Expect.equalToContentsOf "test/golden-results/run-multiline-fails.hs"
         ]
     ]
 

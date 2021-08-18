@@ -35,11 +35,14 @@ data Example
   | UnverifiedExample (LHE.SrcLoc.SrcSpanInfo, Text)
   deriving (Show, Eq)
 
-run :: Example -> Prelude.IO (Result Text Bool)
-run example =
+-- TODO imports need to support qualified and stuff. This is just a hack to see how things work so far.
+-- We can use setImportsQ.
+-- And obviously need to parse it.
+run :: [Text] -> Example -> Prelude.IO (Result Text Bool)
+run imports example =
   case example of
     VerifiedExample (_, code) -> do
-      result <- eval code
+      result <- eval imports code
       case result of
         Prelude.Left err ->
           let _ = Debug.log "interpret error" err
@@ -47,11 +50,11 @@ run example =
         Prelude.Right execResult -> Prelude.pure (Ok execResult)
     UnverifiedExample (_, _code) -> Debug.todo "TODO"
 
-eval :: Text -> Prelude.IO (Prelude.Either Hint.InterpreterError Bool)
-eval s =
+eval :: [Text] -> Text -> Prelude.IO (Prelude.Either Hint.InterpreterError Bool)
+eval imports s =
   Hint.runInterpreter <| do
     Hint.loadModules ["src/Haskell/Verified/Examples/RunTime.hs"]
-    Hint.setImports ["Prelude", "Haskell.Verified.Examples.RunTime"]
+    Hint.setImports ("NriPrelude" : "Haskell.Verified.Examples.RunTime" : List.map Text.toList imports)
     Hint.interpret (Text.toList s) (Hint.as :: Bool)
 
 exampleFromText :: Text -> Maybe Example
