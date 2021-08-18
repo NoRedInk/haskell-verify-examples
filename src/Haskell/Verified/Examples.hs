@@ -1,6 +1,9 @@
 module Haskell.Verified.Examples
   ( moduleWithExamples,
+    Example (..),
+    exampleFromText,
     Comment (..),
+    run,
   )
 where
 
@@ -11,7 +14,9 @@ import qualified Language.Haskell.Exts.Parser as LHE
 import Language.Haskell.Exts.SrcLoc ((<++>))
 import qualified Language.Haskell.Exts.SrcLoc as LHE.SrcLoc
 import qualified Language.Haskell.Exts.Syntax as LHE.Syntax
+import qualified Language.Haskell.Interpreter as Hint
 import NriPrelude
+import qualified Prelude
 
 data ModuleWithExamples = ModuleWithExamples
   { moduleName :: Text,
@@ -29,6 +34,30 @@ data Example
   = VerifiedExample (LHE.SrcLoc.SrcSpanInfo, Text)
   | UnverifiedExample (LHE.SrcLoc.SrcSpanInfo, Text)
   deriving (Show, Eq)
+
+run :: Example -> Prelude.IO (Result Text Bool)
+run example =
+  case example of
+    VerifiedExample (_, code) -> do
+      result <- eval code
+      case result of
+        Prelude.Left err ->
+          let _ = Debug.log "interpret error" err
+           in Prelude.pure (Err (Debug.toString err))
+        Prelude.Right execResult -> Prelude.pure (Ok execResult)
+    UnverifiedExample (_, _code) -> Debug.todo "TODO"
+
+eval :: Text -> Prelude.IO (Prelude.Either Hint.InterpreterError Bool)
+eval s =
+  Hint.runInterpreter <| do
+    Hint.loadModules ["src/Haskell/Verified/Examples/RunTime.hs"]
+    Hint.setImports ["Prelude", "Haskell.Verified.Examples.RunTime"]
+    Hint.interpret (Text.toList s) (Hint.as :: Bool)
+
+exampleFromText :: Text -> Maybe Example
+exampleFromText val =
+  ExampleComment (LHE.SrcLoc.noSrcSpan, val)
+    |> toExamples
 
 moduleWithExamples :: Text -> ModuleWithExamples
 moduleWithExamples source =
