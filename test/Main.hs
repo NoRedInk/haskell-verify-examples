@@ -31,7 +31,7 @@ tests =
                   ]
               )
               |> Debug.toString
-              |> Expect.equalToContentsOf "test/golden-results/moduleWithExamples.json",
+              |> Expect.equalToContentsOf "test/golden-results/moduleWithExamples.hs",
           test "distinguishs examples without `==>`" <| \() ->
             HVE.moduleWithExamples
               ( Text.join
@@ -50,6 +50,6 @@ tests =
                   ]
               )
               |> Debug.toString
-              |> Expect.equalToContentsOf "test/golden-results/moduleWithUnverifiedExamples.json"
+              |> Expect.equalToContentsOf "test/golden-results/moduleWithUnverifiedExamples.hs"
         ]
     ]
