@@ -64,8 +64,8 @@ tests =
                 |> HVE.run
                 |> Expect.fromIO
             result
-              |> expectOk
-              |> andThen Expect.true,
+              |> Debug.toString
+              |> Expect.equalToContentsOf "test/golden-results/run-succeeds.hs",
           test "runs an example when it fails" <| \() -> do
             example <-
               HVE.exampleFromText "1 + 1 ==> 3"
@@ -75,8 +75,8 @@ tests =
                 |> HVE.run
                 |> Expect.fromIO
             result
-              |> expectOk
-              |> andThen Expect.false
+              |> Debug.toString
+              |> Expect.equalToContentsOf "test/golden-results/run-fails.hs"
         ]
     ]
 
@@ -85,11 +85,4 @@ expectJust m = do
   case m of
     Just x -> Ok x
     Nothing -> Err "Expected one Just but got Nothing"
-    |> Stack.withFrozenCallStack Expect.fromResult
-
-expectOk :: Stack.HasCallStack => Result x a -> Expect.Expectation' a
-expectOk m = do
-  case m of
-    Ok x -> Ok x
-    Err _ -> Err "Expected one Ok but got Err"
     |> Stack.withFrozenCallStack Expect.fromResult
