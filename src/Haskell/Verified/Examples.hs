@@ -26,8 +26,8 @@ data Comment
   deriving (Show, Eq)
 
 data Example
-  = VerifiedExample (List (LHE.SrcLoc.SrcSpanInfo, Text))
-  | UnverifiedExample (List (LHE.SrcLoc.SrcSpanInfo, Text))
+  = VerifiedExample (LHE.SrcLoc.SrcSpanInfo, Text)
+  | UnverifiedExample (LHE.SrcLoc.SrcSpanInfo, Text)
   deriving (Show, Eq)
 
 moduleWithExamples :: Text -> ModuleWithExamples
@@ -68,8 +68,8 @@ toExamples (ExampleComment (srcLocInfo, source)) =
       let verified = Foldable.any ((== LHE.Lexer.VarSym "==>") << LHE.Lexer.unLoc) tokens
        in Just
             <| if verified
-              then VerifiedExample [(srcLocInfo, source)]
-              else UnverifiedExample [(srcLocInfo, source)]
+              then VerifiedExample (srcLocInfo, source)
+              else UnverifiedExample (srcLocInfo, source)
     LHE.ParseFailed _ msg ->
       let _ = Debug.log "msg" msg
        in Debug.todo "TODO"

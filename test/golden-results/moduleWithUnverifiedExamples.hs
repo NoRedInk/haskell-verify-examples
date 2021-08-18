@@ -46,28 +46,25 @@ ModuleWithExamples
       ]
   , examples =
       [ VerifiedExample
-          [ ( SrcSpanInfo
-                { srcInfoSpan = SrcSpan "<unknown>.hs" 4 1 5 11
-                , srcInfoPoints = []
-                }
-            , "test\n==> 1"
-            )
-          ]
+          ( SrcSpanInfo
+              { srcInfoSpan = SrcSpan "<unknown>.hs" 4 1 5 11
+              , srcInfoPoints = []
+              }
+          , "test\n==> 1"
+          )
       , UnverifiedExample
-          [ ( SrcSpanInfo
-                { srcInfoSpan = SrcSpan "<unknown>.hs" 7 1 7 10
-                , srcInfoPoints = []
-                }
-            , "test"
-            )
-          ]
+          ( SrcSpanInfo
+              { srcInfoSpan = SrcSpan "<unknown>.hs" 7 1 7 10
+              , srcInfoPoints = []
+              }
+          , "test"
+          )
       , VerifiedExample
-          [ ( SrcSpanInfo
-                { srcInfoSpan = SrcSpan "<unknown>.hs" 9 1 10 11
-                , srcInfoPoints = []
-                }
-            , "test + test\n==> 2"
-            )
-          ]
+          ( SrcSpanInfo
+              { srcInfoSpan = SrcSpan "<unknown>.hs" 9 1 10 11
+              , srcInfoPoints = []
+              }
+          , "test + test\n==> 2"
+          )
       ]
   }
