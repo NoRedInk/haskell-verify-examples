@@ -24,7 +24,21 @@ ModuleWithExamples
           )
       , ExampleComment
           ( SrcSpanInfo
-              { srcInfoSpan = SrcSpan "<unknown>.hs" 7 1 8 11
+              { srcInfoSpan = SrcSpan "<unknown>.hs" 7 1 7 10
+              , srcInfoPoints = []
+              }
+          , "test"
+          )
+      , Comment
+          ( SrcSpanInfo
+              { srcInfoSpan = SrcSpan "<unknown>.hs" 8 1 8 3
+              , srcInfoPoints = []
+              }
+          , ""
+          )
+      , ExampleComment
+          ( SrcSpanInfo
+              { srcInfoSpan = SrcSpan "<unknown>.hs" 9 1 10 11
               , srcInfoPoints = []
               }
           , "test + test\n==> 2"
@@ -39,9 +53,17 @@ ModuleWithExamples
             , "test\n==> 1"
             )
           ]
+      , UnverifiedExample
+          [ ( SrcSpanInfo
+                { srcInfoSpan = SrcSpan "<unknown>.hs" 7 1 7 10
+                , srcInfoPoints = []
+                }
+            , "test"
+            )
+          ]
       , VerifiedExample
           [ ( SrcSpanInfo
-                { srcInfoSpan = SrcSpan "<unknown>.hs" 7 1 8 11
+                { srcInfoSpan = SrcSpan "<unknown>.hs" 9 1 10 11
                 , srcInfoPoints = []
                 }
             , "test + test\n==> 2"
