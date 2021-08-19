@@ -8,7 +8,6 @@ module Haskell.Verified.Examples
 where
 
 import qualified Data.Foldable as Foldable
-import qualified Data.Text.IO
 import qualified Language.Haskell.Exts as LHE
 import qualified Language.Haskell.Exts.Comments as LHE.Comments
 import qualified Language.Haskell.Exts.Lexer as LHE.Lexer
@@ -66,18 +65,18 @@ exampleFromText val =
 
 parse :: Prelude.FilePath -> Prelude.IO ModuleWithExamples
 parse path = do
-  parsed <- parseUTF8FileWithComments path
+  parsed <- parseFileWithComments path
   case parsed of
-    LHE.Parser.ParseOk ok -> Prelude.pure (moduleWithExamples ok)
+    LHE.Parser.ParseOk ok -> Prelude.pure (toModuleWithExamples ok)
     LHE.Parser.ParseFailed _ _msg ->
       Debug.todo "TODO"
 
-moduleWithExamples ::
+toModuleWithExamples ::
   ( LHE.Syntax.Module LHE.SrcLoc.SrcSpanInfo,
     List LHE.Comments.Comment
   ) ->
   ModuleWithExamples
-moduleWithExamples parsed =
+toModuleWithExamples parsed =
   case parsed of
     (LHE.Syntax.Module srcSpanInfo (Just (LHE.Syntax.ModuleHead _ (LHE.Syntax.ModuleName _ name) _ _)) _ _ _, cs) ->
       let comments = toComments cs
@@ -135,11 +134,13 @@ mergeComments cs =
     cs
     |> List.reverse
 
-parseUTF8FileWithComments ::
+parseFileWithComments ::
   Prelude.FilePath ->
   Prelude.IO
-    ( LHE.Parser.ParseResult (LHE.Syntax.Module LHE.SrcLoc.SrcSpanInfo, List LHE.Comments.Comment)
+    ( LHE.Parser.ParseResult
+        ( LHE.Syntax.Module LHE.SrcLoc.SrcSpanInfo,
+          List LHE.Comments.Comment
+        )
     )
-parseUTF8FileWithComments path = do
-  contents <- Data.Text.IO.readFile path
-  Prelude.pure <| LHE.parseFileContentsWithComments LHE.defaultParseMode (Text.toList contents)
+parseFileWithComments path =
+  LHE.parseFileWithComments (LHE.defaultParseMode {LHE.parseFilename = path}) path
