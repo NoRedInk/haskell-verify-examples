@@ -43,7 +43,7 @@ tests =
                 |> Expect.fromIO
             result
               |> Debug.toString
-              |> Expect.equalToContentsOf "test/golden-results/run-succeeds.hs",
+              |> Expect.equalToContentsOf "test/golden-results/runVerified.hs",
           test "runs an example when it fails" <| \() -> do
             example <-
               HVE.exampleFromText "1 + 1 ==> 3"
@@ -54,7 +54,7 @@ tests =
                 |> Expect.fromIO
             result
               |> Debug.toString
-              |> Expect.equalToContentsOf "test/golden-results/run-fails.hs",
+              |> Expect.equalToContentsOf "test/golden-results/runUnverified.hs",
           test "runs multiline example (succeeds)" <| \() ->
             do
               example <-
@@ -78,7 +78,7 @@ tests =
                   |> Expect.fromIO
               result
                 |> Debug.toString
-                |> Expect.equalToContentsOf "test/golden-results/run-multiline-succeeds.hs",
+                |> Expect.equalToContentsOf "test/golden-results/runMultilineVerified.hs",
           test "runs multiline example (fails)" <| \() -> do
             example <-
               [ "[ 1",
@@ -101,7 +101,7 @@ tests =
                 |> Expect.fromIO
             result
               |> Debug.toString
-              |> Expect.equalToContentsOf "test/golden-results/run-multiline-fails.hs"
+              |> Expect.equalToContentsOf "test/golden-results/runMultilineUnverified.hs"
         ]
     ]
 
