@@ -1,5 +1,5 @@
 module Haskell.Verified.Examples
-  ( moduleWithExamples,
+  ( parse,
     Example (..),
     exampleFromText,
     Comment (..),
@@ -8,9 +8,11 @@ module Haskell.Verified.Examples
 where
 
 import qualified Data.Foldable as Foldable
+import qualified Data.Text.IO
+import qualified Language.Haskell.Exts as LHE
 import qualified Language.Haskell.Exts.Comments as LHE.Comments
 import qualified Language.Haskell.Exts.Lexer as LHE.Lexer
-import qualified Language.Haskell.Exts.Parser as LHE
+import qualified Language.Haskell.Exts.Parser as LHE.Parser
 import Language.Haskell.Exts.SrcLoc ((<++>))
 import qualified Language.Haskell.Exts.SrcLoc as LHE.SrcLoc
 import qualified Language.Haskell.Exts.Syntax as LHE.Syntax
@@ -62,10 +64,22 @@ exampleFromText val =
   ExampleComment (LHE.SrcLoc.noSrcSpan, val)
     |> toExamples
 
-moduleWithExamples :: Text -> ModuleWithExamples
-moduleWithExamples source =
-  case LHE.parseModuleWithComments LHE.defaultParseMode (Text.toList source) of
-    LHE.ParseOk (LHE.Syntax.Module srcSpanInfo (Just (LHE.Syntax.ModuleHead _ (LHE.Syntax.ModuleName _ name) _ _)) _ _ _, cs) ->
+parse :: Prelude.FilePath -> Prelude.IO ModuleWithExamples
+parse path = do
+  parsed <- parseUTF8FileWithComments path
+  case parsed of
+    LHE.Parser.ParseOk ok -> Prelude.pure (moduleWithExamples ok)
+    LHE.Parser.ParseFailed _ _msg ->
+      Debug.todo "TODO"
+
+moduleWithExamples ::
+  ( LHE.Syntax.Module LHE.SrcLoc.SrcSpanInfo,
+    List LHE.Comments.Comment
+  ) ->
+  ModuleWithExamples
+moduleWithExamples parsed =
+  case parsed of
+    (LHE.Syntax.Module srcSpanInfo (Just (LHE.Syntax.ModuleHead _ (LHE.Syntax.ModuleName _ name) _ _)) _ _ _, cs) ->
       let comments = toComments cs
           examples = List.filterMap toExamples comments
        in ModuleWithExamples
@@ -73,12 +87,10 @@ moduleWithExamples source =
               comments,
               examples
             }
-    LHE.ParseOk (LHE.Syntax.Module _ Nothing _ _ _, _) ->
+    (LHE.Syntax.Module _ Nothing _ _ _, _) ->
       Debug.todo "TODO no module head"
-    LHE.ParseOk _ ->
+    _ ->
       Debug.todo "TODO unsupported module type"
-    LHE.ParseFailed _ _msg ->
-      Debug.todo "TODO"
 
 toComments :: List LHE.Comments.Comment -> List Comment
 toComments cs =
@@ -96,13 +108,13 @@ toExamples :: Comment -> Maybe Example
 toExamples (Comment _) = Nothing
 toExamples (ExampleComment (srcLocInfo, source)) =
   case LHE.Lexer.lexTokenStream (Text.toList source) of
-    LHE.ParseOk tokens ->
+    LHE.Parser.ParseOk tokens ->
       let verified = Foldable.any ((== LHE.Lexer.VarSym "==>") << LHE.Lexer.unLoc) tokens
        in Just
             <| if verified
               then VerifiedExample (srcLocInfo, source)
               else UnverifiedExample (srcLocInfo, source)
-    LHE.ParseFailed _ msg ->
+    LHE.Parser.ParseFailed _ msg ->
       let _ = Debug.log "msg" msg
        in Debug.todo "TODO"
 
@@ -122,3 +134,12 @@ mergeComments cs =
     []
     cs
     |> List.reverse
+
+parseUTF8FileWithComments ::
+  Prelude.FilePath ->
+  Prelude.IO
+    ( LHE.Parser.ParseResult (LHE.Syntax.Module LHE.SrcLoc.SrcSpanInfo, List LHE.Comments.Comment)
+    )
+parseUTF8FileWithComments path = do
+  contents <- Data.Text.IO.readFile path
+  Prelude.pure <| LHE.parseFileContentsWithComments LHE.defaultParseMode (Text.toList contents)

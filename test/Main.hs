@@ -15,43 +15,21 @@ tests =
   describe
     "Haskell.Verified.Examples"
     [ describe
-        "moduleWithExamples"
-        [ test "returns all comments" <| \() ->
-            HVE.moduleWithExamples
-              ( Text.join
-                  "\n"
-                  [ "module Foo where",
-                    "-- hello world",
-                    "--",
-                    "-- > test",
-                    "-- > ==> 1",
-                    "--",
-                    "-- > test + test",
-                    "-- > ==> 2",
-                    "test = 1"
-                  ]
-              )
+        "parse"
+        [ test "returns all comments" <| \() -> do
+            result <-
+              HVE.parse "test/assets/Simple.hs"
+                |> Expect.fromIO
+            result
               |> Debug.toString
-              |> Expect.equalToContentsOf "test/golden-results/moduleWithExamples.hs",
-          test "distinguishs examples without `==>`" <| \() ->
-            HVE.moduleWithExamples
-              ( Text.join
-                  "\n"
-                  [ "module Foo where",
-                    "-- hello world",
-                    "--",
-                    "-- > test",
-                    "-- > ==> 1",
-                    "--",
-                    "-- > test",
-                    "--",
-                    "-- > test + test",
-                    "-- > ==> 2",
-                    "test = 1"
-                  ]
-              )
+              |> Expect.equalToContentsOf "test/golden-results/parseSimple.hs",
+          test "distinguishs examples without `==>`" <| \() -> do
+            result <-
+              HVE.parse "test/assets/UnverifiedExamples.hs"
+                |> Expect.fromIO
+            result
               |> Debug.toString
-              |> Expect.equalToContentsOf "test/golden-results/moduleWithUnverifiedExamples.hs"
+              |> Expect.equalToContentsOf "test/golden-results/parseUnverifiedExamples.hs"
         ],
       describe
         "run"
