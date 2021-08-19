@@ -1,9 +1,10 @@
 module Haskell.Verified.Examples
   ( parse,
+    ModuleWithExamples (..),
     Example (..),
     exampleFromText,
     Comment (..),
-    run,
+    verify,
   )
 where
 
@@ -40,25 +41,34 @@ data Example
 -- TODO imports need to support qualified and stuff. This is just a hack to see how things work so far.
 -- We can use setImportsQ.
 -- And obviously need to parse it.
-run :: [Text] -> Example -> Prelude.IO (Result Text Verified)
-run imports example =
+verify :: Maybe Prelude.FilePath -> [Text] -> Example -> Prelude.IO (Result Text Verified)
+verify modulePath imports example =
   case example of
     VerifiedExample (_, code) -> do
-      result <- eval imports code
+      result <- eval modulePath imports code
       case result of
         Prelude.Left err ->
           let _ = Debug.log "interpret error" err
            in Prelude.pure (Err (Debug.toString err))
         Prelude.Right execResult -> Prelude.pure (Ok execResult)
-    UnverifiedExample (_, _code) -> Debug.todo "TODO"
+    UnverifiedExample (_, code) ->
+      code
+        |> NoExampleResult
+        |> Ok
+        |> Prelude.pure
 
-eval :: List Text -> Text -> Prelude.IO (Prelude.Either Hint.InterpreterError Verified)
-eval imports s =
+eval :: Maybe Prelude.FilePath -> List Text -> Text -> Prelude.IO (Prelude.Either Hint.InterpreterError Verified)
+eval modulePath imports s =
   Hint.runInterpreter <| do
+    let preload =
+          [ "src/Haskell/Verified/Examples/RunTime.hs",
+            "src/Haskell/Verified/Examples/Verified.hs"
+          ]
     Hint.loadModules
-      [ "src/Haskell/Verified/Examples/RunTime.hs",
-        "src/Haskell/Verified/Examples/Verified.hs"
-      ]
+      ( case modulePath of
+          Just path -> path : preload
+          Nothing -> preload
+      )
     Hint.setImports ("NriPrelude" : "Haskell.Verified.Examples.RunTime" : "Haskell.Verified.Examples.Verified" : List.map Text.toList imports)
     Hint.interpret (Text.toList s) (Hint.as :: Verified)
 

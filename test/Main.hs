@@ -3,8 +3,10 @@ module Main (main) where
 import qualified Expect
 import qualified GHC.Stack as Stack
 import qualified Haskell.Verified.Examples as HVE
+import qualified System.Directory as Directory
 import Test (Test, describe, test)
 import qualified Test
+import qualified Tuple
 import qualified Prelude
 
 main :: Prelude.IO ()
@@ -22,40 +24,40 @@ tests =
                 |> Expect.fromIO
             result
               |> Debug.toString
-              |> Expect.equalToContentsOf "test/golden-results/parseSimple.hs",
+              |> Expect.equalToContentsOf "test/golden-results/parse-simple.hs",
           test "distinguishs examples without `==>`" <| \() -> do
             result <-
               HVE.parse "test/assets/UnverifiedExamples.hs"
                 |> Expect.fromIO
             result
               |> Debug.toString
-              |> Expect.equalToContentsOf "test/golden-results/parseUnverifiedExamples.hs"
+              |> Expect.equalToContentsOf "test/golden-results/parse-unverified-examples.hs"
         ],
       describe
-        "run"
-        [ test "runs an example when it succeeds" <| \() -> do
+        "verify"
+        [ test "verfies an example when it succeeds" <| \() -> do
             example <-
               HVE.exampleFromText "1 + 1 ==> 2"
                 |> expectJust
             result <-
               example
-                |> HVE.run []
+                |> HVE.verify Nothing []
                 |> Expect.fromIO
             result
               |> Debug.toString
-              |> Expect.equalToContentsOf "test/golden-results/runVerified.hs",
-          test "runs an example when it fails" <| \() -> do
+              |> Expect.equalToContentsOf "test/golden-results/verify-verified.hs",
+          test "verfies an example when it fails" <| \() -> do
             example <-
               HVE.exampleFromText "1 + 1 ==> 3"
                 |> expectJust
             result <-
               example
-                |> HVE.run []
+                |> HVE.verify Nothing []
                 |> Expect.fromIO
             result
               |> Debug.toString
-              |> Expect.equalToContentsOf "test/golden-results/runUnverified.hs",
-          test "runs multiline example (succeeds)" <| \() ->
+              |> Expect.equalToContentsOf "test/golden-results/verify-unverified.hs",
+          test "verfies multiline example (succeeds)" <| \() ->
             do
               example <-
                 [ "[ 1",
@@ -74,12 +76,12 @@ tests =
                   |> expectJust
               result <-
                 example
-                  |> HVE.run ["List"]
+                  |> HVE.verify Nothing ["List"]
                   |> Expect.fromIO
               result
                 |> Debug.toString
-                |> Expect.equalToContentsOf "test/golden-results/runMultilineVerified.hs",
-          test "runs multiline example (fails)" <| \() -> do
+                |> Expect.equalToContentsOf "test/golden-results/verify-multiline-verified.hs",
+          test "verfies multiline example (fails)" <| \() -> do
             example <-
               [ "[ 1",
                 ", 2",
@@ -97,11 +99,36 @@ tests =
                 |> expectJust
             result <-
               example
-                |> HVE.run ["List"]
+                |> HVE.verify Nothing ["List"]
                 |> Expect.fromIO
             result
               |> Debug.toString
-              |> Expect.equalToContentsOf "test/golden-results/runMultilineUnverified.hs"
+              |> Expect.equalToContentsOf "test/golden-results/verify-multiline-unverified.hs"
+        ],
+      describe
+        "Integration"
+        [ test "verifies all examples from a file" <| \() -> do
+            assets <-
+              Directory.listDirectory "test/assets"
+                |> Expect.fromIO
+            results <-
+              assets
+                |> List.map ("test/assets/" ++)
+                |> Prelude.traverse
+                  ( \modulePath -> do
+                      parsed <-
+                        HVE.parse modulePath
+                          |> Expect.fromIO
+                      result <-
+                        parsed
+                          |> HVE.examples
+                          |> Prelude.traverse (HVE.verify (Just modulePath) [Tuple.second <| HVE.moduleName parsed])
+                          |> Expect.fromIO
+                      Expect.fromResult (Ok (modulePath, result))
+                  )
+            results
+              |> Debug.toString
+              |> Expect.equalToContentsOf "test/golden-results/integration-simple.hs"
         ]
     ]
 
