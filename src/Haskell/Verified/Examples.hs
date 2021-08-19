@@ -8,6 +8,7 @@ module Haskell.Verified.Examples
 where
 
 import qualified Data.Foldable as Foldable
+import Haskell.Verified.Examples.Verified (Verified (..))
 import qualified Language.Haskell.Exts as LHE
 import qualified Language.Haskell.Exts.Comments as LHE.Comments
 import qualified Language.Haskell.Exts.Lexer as LHE.Lexer
@@ -39,7 +40,7 @@ data Example
 -- TODO imports need to support qualified and stuff. This is just a hack to see how things work so far.
 -- We can use setImportsQ.
 -- And obviously need to parse it.
-run :: [Text] -> Example -> Prelude.IO (Result Text Bool)
+run :: [Text] -> Example -> Prelude.IO (Result Text Verified)
 run imports example =
   case example of
     VerifiedExample (_, code) -> do
@@ -51,12 +52,15 @@ run imports example =
         Prelude.Right execResult -> Prelude.pure (Ok execResult)
     UnverifiedExample (_, _code) -> Debug.todo "TODO"
 
-eval :: [Text] -> Text -> Prelude.IO (Prelude.Either Hint.InterpreterError Bool)
+eval :: List Text -> Text -> Prelude.IO (Prelude.Either Hint.InterpreterError Verified)
 eval imports s =
   Hint.runInterpreter <| do
-    Hint.loadModules ["src/Haskell/Verified/Examples/RunTime.hs"]
-    Hint.setImports ("NriPrelude" : "Haskell.Verified.Examples.RunTime" : List.map Text.toList imports)
-    Hint.interpret (Text.toList s) (Hint.as :: Bool)
+    Hint.loadModules
+      [ "src/Haskell/Verified/Examples/RunTime.hs",
+        "src/Haskell/Verified/Examples/Verified.hs"
+      ]
+    Hint.setImports ("NriPrelude" : "Haskell.Verified.Examples.RunTime" : "Haskell.Verified.Examples.Verified" : List.map Text.toList imports)
+    Hint.interpret (Text.toList s) (Hint.as :: Verified)
 
 exampleFromText :: Text -> Maybe Example
 exampleFromText val =

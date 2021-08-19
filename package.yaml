@@ -23,6 +23,7 @@ library:
   exposed-modules:
   - Haskell.Verified.Examples
   - Haskell.Verified.Examples.RunTime
+  - Haskell.Verified.Examples.Verified
   source-dirs: src
 tests:
   spec:
