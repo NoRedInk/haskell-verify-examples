@@ -1,5 +1,16 @@
 ModuleWithExamples
-  { moduleName = "Foo"
+  { moduleName =
+      ( SrcSpanInfo
+          { srcInfoSpan = SrcSpan "<unknown>.hs" 1 1 9 9
+          , srcInfoPoints =
+              [ SrcSpan "<unknown>.hs" 1 1 1 1
+              , SrcSpan "<unknown>.hs" 1 1 1 1
+              , SrcSpan "<unknown>.hs" 9 1 9 1
+              , SrcSpan "<unknown>.hs" 9 9 9 9
+              ]
+          }
+      , "Foo"
+      )
   , comments =
       [ Comment
           ( SrcSpanInfo

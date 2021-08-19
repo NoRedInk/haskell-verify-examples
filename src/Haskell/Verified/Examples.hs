@@ -19,7 +19,7 @@ import NriPrelude
 import qualified Prelude
 
 data ModuleWithExamples = ModuleWithExamples
-  { moduleName :: Text,
+  { moduleName :: (LHE.SrcLoc.SrcSpanInfo, Text),
     comments :: List Comment,
     examples :: List Example
   }
@@ -65,11 +65,11 @@ exampleFromText val =
 moduleWithExamples :: Text -> ModuleWithExamples
 moduleWithExamples source =
   case LHE.parseModuleWithComments LHE.defaultParseMode (Text.toList source) of
-    LHE.ParseOk (LHE.Syntax.Module _ (Just (LHE.Syntax.ModuleHead _ (LHE.Syntax.ModuleName _ name) _ _)) _ _ _, cs) ->
+    LHE.ParseOk (LHE.Syntax.Module srcSpanInfo (Just (LHE.Syntax.ModuleHead _ (LHE.Syntax.ModuleName _ name) _ _)) _ _ _, cs) ->
       let comments = toComments cs
           examples = List.filterMap toExamples comments
        in ModuleWithExamples
-            { moduleName = Text.fromList name,
+            { moduleName = (srcSpanInfo, Text.fromList name),
               comments,
               examples
             }
