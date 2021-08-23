@@ -2,13 +2,13 @@ ModuleWithExamples
   { moduleName =
       ( SrcSpanInfo
           { srcInfoSpan =
-              SrcSpan "test/assets/UnverifiedExamples.hs" 1 1 13 1
+              SrcSpan "test/assets/UnverifiedExamples.hs" 1 1 22 1
           , srcInfoPoints =
               [ SrcSpan "test/assets/UnverifiedExamples.hs" 1 1 1 1
               , SrcSpan "test/assets/UnverifiedExamples.hs" 1 1 1 1
               , SrcSpan "test/assets/UnverifiedExamples.hs" 12 1 12 1
-              , SrcSpan "test/assets/UnverifiedExamples.hs" 13 1 13 1
-              , SrcSpan "test/assets/UnverifiedExamples.hs" 13 1 13 1
+              , SrcSpan "test/assets/UnverifiedExamples.hs" 22 1 22 1
+              , SrcSpan "test/assets/UnverifiedExamples.hs" 22 1 22 1
               ]
           }
       , "Foo"
@@ -57,7 +57,23 @@ ModuleWithExamples
                   SrcSpan "test/assets/UnverifiedExamples.hs" 10 1 11 11
               , srcInfoPoints = []
               }
-          , "test + test\n==> 2"
+          , "test + test\n==> 3"
+          )
+      , Comment
+          ( SrcSpanInfo
+              { srcInfoSpan =
+                  SrcSpan "test/assets/UnverifiedExamples.hs" 14 1 15 3
+              , srcInfoPoints = []
+              }
+          , " | more stuff\n"
+          )
+      , ExampleComment
+          ( SrcSpanInfo
+              { srcInfoSpan =
+                  SrcSpan "test/assets/UnverifiedExamples.hs" 16 1 21 21
+              , srcInfoPoints = []
+              }
+          , "[ 1\n, 2\n, 3\n, 4\n] |> map (+ 1)\n==> [ 2, 4, 5 ]"
           )
       ]
   , examples =
@@ -83,7 +99,15 @@ ModuleWithExamples
                   SrcSpan "test/assets/UnverifiedExamples.hs" 10 1 11 11
               , srcInfoPoints = []
               }
-          , "test + test\n==> 2"
+          , "test + test\n==> 3"
+          )
+      , VerifiedExample
+          ( SrcSpanInfo
+              { srcInfoSpan =
+                  SrcSpan "test/assets/UnverifiedExamples.hs" 16 1 21 21
+              , srcInfoPoints = []
+              }
+          , "[ 1\n, 2\n, 3\n, 4\n] |> map (+ 1)\n==> [ 2, 4, 5 ]"
           )
       ]
   }

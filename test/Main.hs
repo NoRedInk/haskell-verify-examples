@@ -124,7 +124,12 @@ tests =
                           |> HVE.examples
                           |> Prelude.traverse (HVE.verify (Just modulePath) [Tuple.second <| HVE.moduleName parsed])
                           |> Expect.fromIO
-                      Expect.fromResult (Ok (modulePath, result))
+                      Expect.fromResult
+                        ( Ok
+                            ( modulePath,
+                              List.map (Result.map HVE.pretty) result
+                            )
+                        )
                   )
             results
               |> Debug.toString

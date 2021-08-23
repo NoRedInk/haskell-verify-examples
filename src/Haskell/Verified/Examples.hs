@@ -5,6 +5,7 @@ module Haskell.Verified.Examples
     exampleFromText,
     Comment (..),
     verify,
+    pretty,
   )
 where
 
@@ -158,3 +159,22 @@ parseFileWithComments ::
     )
 parseFileWithComments path =
   LHE.parseFileWithComments (LHE.defaultParseMode {LHE.parseFilename = path}) path
+
+pretty :: Verified -> List Text
+pretty verified =
+  case verified of
+    Verified -> []
+    Unverified expected actual ->
+      [ "The example was incorrect and couldn't be verified.",
+        "",
+        "We expected:",
+        expected,
+        "",
+        "but received",
+        actual
+      ]
+    NoExampleResult example ->
+      [ "No example result was provided. For example:",
+        "",
+        example
+      ]
