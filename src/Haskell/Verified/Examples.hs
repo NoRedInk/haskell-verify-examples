@@ -42,6 +42,7 @@ data Example
 -- TODO imports need to support qualified and stuff. This is just a hack to see how things work so far.
 -- We can use setImportsQ.
 -- And obviously need to parse it.
+--
 verify :: Maybe Prelude.FilePath -> [Text] -> Example -> Prelude.IO (Result Text Verified)
 verify modulePath imports example =
   case example of
@@ -83,8 +84,8 @@ parse path = do
   parsed <- parseFileWithComments path
   case parsed of
     LHE.Parser.ParseOk ok -> Prelude.pure (toModuleWithExamples ok)
-    LHE.Parser.ParseFailed _ _msg ->
-      Debug.todo "TODO"
+    LHE.Parser.ParseFailed x msg ->
+      Debug.todo (Debug.toString x ++ Debug.toString msg)
 
 toModuleWithExamples ::
   ( LHE.Syntax.Module LHE.SrcLoc.SrcSpanInfo,
