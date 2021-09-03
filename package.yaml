@@ -13,6 +13,9 @@ extra-source-files:
   - LICENSE
   - "test/golden-results/*"
   - "test/assets/*"
+data-files:
+  - src/Haskell/Verified/Examples/RunTime.hs
+  - src/Haskell/Verified/Examples/Verified.hs
 executables:
   haskell-verify-examples:
     dependencies:

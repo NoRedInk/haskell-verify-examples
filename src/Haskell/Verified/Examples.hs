@@ -23,6 +23,8 @@ import NriPrelude
 import qualified Prelude
 import qualified Text.Read
 
+import qualified Paths_haskell_verified_examples as DataPath
+
 data ModuleWithExamples = ModuleWithExamples
   { moduleName :: Maybe Text, -- Headless modules might not have a name
     moduleSource :: LHE.SrcSpanInfo,
@@ -58,17 +60,22 @@ verify modulePath imports extensions example =
         Prelude.Right execResult -> Prelude.pure (Ok execResult)
     UnverifiedExample (_, code) ->
       code
+        |> Text.toList
         |> NoExampleResult
         |> Ok
         |> Prelude.pure
 
+preloadPaths :: Prelude.IO (List Prelude.FilePath)
+preloadPaths = Prelude.traverse DataPath.getDataFileName paths
+  where paths = [ "src/Haskell/Verified/Examples/RunTime.hs"
+                , "src/Haskell/Verified/Examples/Verified.hs"
+                ]
+
 eval :: Maybe Prelude.FilePath -> List Text -> List Text -> Text -> Prelude.IO (Prelude.Either Hint.InterpreterError Verified)
 eval modulePath imports extensions s =
   Hint.runInterpreter <| do
-    let preload =
-          [ "src/Haskell/Verified/Examples/RunTime.hs",
-            "src/Haskell/Verified/Examples/Verified.hs"
-          ]
+    preload <- Hint.lift preloadPaths
+    
     Hint.loadModules
       ( case modulePath of
           Just path -> path : preload
@@ -180,13 +187,13 @@ pretty verified =
       [ "The example was incorrect and couldn't be verified.",
         "",
         "We expected:",
-        expected,
+        Text.fromList expected,
         "",
         "but received",
-        actual
+        Text.fromList actual
       ]
     NoExampleResult example ->
       [ "No example result was provided. For example:",
         "",
-        example
+        Text.fromList example
       ]

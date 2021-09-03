@@ -17,10 +17,10 @@
         [ "The example was incorrect and couldn't be verified."
         , ""
         , "We expected:"
-        , "[ 2 , 3 , 4 , 5 ]"
+        , "[2,3,4,5]"
         , ""
         , "but received"
-        , "[ 2 , 4 , 5 ]"
+        , "[2,4,5]"
         ]
     ]
   )

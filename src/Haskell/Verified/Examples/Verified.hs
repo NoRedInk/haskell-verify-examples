@@ -1,9 +1,9 @@
 module Haskell.Verified.Examples.Verified (Verified (..)) where
 
-import NriPrelude
+import Prelude
 
 data Verified
   = Verified
-  | Unverified Text Text
-  | NoExampleResult Text
+  | Unverified String String
+  | NoExampleResult String
   deriving (Show)
