@@ -1,4 +1,5 @@
-[ ( "test/assets/Simple.hs" , [ Ok [] , Ok [] ] )
+[ ( "test/assets/LanguageExtensions.hs" , [ Ok [] ] )
+, ( "test/assets/Simple.hs" , [ Ok [] , Ok [] ] )
 , ( "test/assets/UnverifiedExamples.hs"
   , [ Ok []
     , Ok

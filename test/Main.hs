@@ -41,7 +41,7 @@ tests =
                 |> expectJust
             result <-
               example
-                |> HVE.verify Nothing []
+                |> HVE.verify Nothing [] []
                 |> Expect.fromIO
             result
               |> Debug.toString
@@ -52,7 +52,7 @@ tests =
                 |> expectJust
             result <-
               example
-                |> HVE.verify Nothing []
+                |> HVE.verify Nothing [] []
                 |> Expect.fromIO
             result
               |> Debug.toString
@@ -76,7 +76,7 @@ tests =
                   |> expectJust
               result <-
                 example
-                  |> HVE.verify Nothing ["List"]
+                  |> HVE.verify Nothing ["List"] []
                   |> Expect.fromIO
               result
                 |> Debug.toString
@@ -99,7 +99,7 @@ tests =
                 |> expectJust
             result <-
               example
-                |> HVE.verify Nothing ["List"]
+                |> HVE.verify Nothing ["List"] []
                 |> Expect.fromIO
             result
               |> Debug.toString
@@ -122,7 +122,7 @@ tests =
                       result <-
                         parsed
                           |> HVE.examples
-                          |> Prelude.traverse (HVE.verify (Just modulePath) [Tuple.second <| HVE.moduleName parsed])
+                          |> Prelude.traverse (HVE.verify (Just modulePath) [Tuple.second <| HVE.moduleName parsed] (HVE.languageExtensions parsed))
                           |> Expect.fromIO
                       Expect.fromResult
                         ( Ok

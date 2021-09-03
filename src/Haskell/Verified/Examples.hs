@@ -21,9 +21,11 @@ import qualified Language.Haskell.Exts.Syntax as LHE.Syntax
 import qualified Language.Haskell.Interpreter as Hint
 import NriPrelude
 import qualified Prelude
+import qualified Text.Read
 
 data ModuleWithExamples = ModuleWithExamples
   { moduleName :: (LHE.SrcLoc.SrcSpanInfo, Text),
+    languageExtensions :: List Text,
     comments :: List Comment,
     examples :: List Example
   }
@@ -43,11 +45,11 @@ data Example
 -- We can use setImportsQ.
 -- And obviously need to parse it.
 --
-verify :: Maybe Prelude.FilePath -> [Text] -> Example -> Prelude.IO (Result Text Verified)
-verify modulePath imports example =
+verify :: Maybe Prelude.FilePath -> [Text] -> [Text] -> Example -> Prelude.IO (Result Text Verified)
+verify modulePath imports extensions example =
   case example of
     VerifiedExample (_, code) -> do
-      result <- eval modulePath imports code
+      result <- eval modulePath imports extensions code
       case result of
         Prelude.Left err ->
           let _ = Debug.log "interpret error" err
@@ -59,8 +61,8 @@ verify modulePath imports example =
         |> Ok
         |> Prelude.pure
 
-eval :: Maybe Prelude.FilePath -> List Text -> Text -> Prelude.IO (Prelude.Either Hint.InterpreterError Verified)
-eval modulePath imports s =
+eval :: Maybe Prelude.FilePath -> List Text -> List Text -> Text -> Prelude.IO (Prelude.Either Hint.InterpreterError Verified)
+eval modulePath imports extensions s =
   Hint.runInterpreter <| do
     let preload =
           [ "src/Haskell/Verified/Examples/RunTime.hs",
@@ -71,6 +73,10 @@ eval modulePath imports s =
           Just path -> path : preload
           Nothing -> preload
       )
+    
+    -- TODO: Throw nice "unrecognized extension" error instead of ignoring here
+    let langs = List.filterMap (\ex -> Text.Read.readMaybe <| Text.toList ex) extensions
+    Hint.set [ Hint.languageExtensions Hint.:= langs ]
     Hint.setImports ("NriPrelude" : "Haskell.Verified.Examples.RunTime" : "Haskell.Verified.Examples.Verified" : List.map Text.toList imports)
     Hint.interpret (Text.toList s) (Hint.as :: Verified)
 
@@ -94,11 +100,13 @@ toModuleWithExamples ::
   ModuleWithExamples
 toModuleWithExamples parsed =
   case parsed of
-    (LHE.Syntax.Module srcSpanInfo (Just (LHE.Syntax.ModuleHead _ (LHE.Syntax.ModuleName _ name) _ _)) _ _ _, cs) ->
+    (LHE.Syntax.Module srcSpanInfo (Just (LHE.Syntax.ModuleHead _ (LHE.Syntax.ModuleName _ name) _ _)) pragmas _ _, cs) ->
       let comments = toComments cs
           examples = List.filterMap toExamples comments
+          languageExtensions = [ Text.fromList n | LHE.Syntax.LanguagePragma _ ns <- pragmas, (LHE.Syntax.Ident _ n) <- ns ]
        in ModuleWithExamples
             { moduleName = (srcSpanInfo, Text.fromList name),
+              languageExtensions,
               comments,
               examples
             }

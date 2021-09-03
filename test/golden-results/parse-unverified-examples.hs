@@ -13,6 +13,7 @@ ModuleWithExamples
           }
       , "Foo"
       )
+  , languageExtensions = []
   , comments =
       [ Comment
           ( SrcSpanInfo
