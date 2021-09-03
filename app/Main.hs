@@ -21,7 +21,7 @@ main = do
             result <-
               parsed
                 |> HVE.examples
-                |> Prelude.traverse (HVE.verify (Just modulePath) (List.filterMap id [HVE.moduleName parsed]) (HVE.languageExtensions parsed))
+                |> Prelude.traverse (HVE.verify (Just modulePath) (List.filterMap Prelude.id [HVE.moduleName parsed]) (HVE.languageExtensions parsed))
             Prelude.pure (modulePath, result)
         )
   let _ = Debug.log "results" results
