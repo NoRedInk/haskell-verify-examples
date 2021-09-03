@@ -1,17 +1,16 @@
 ModuleWithExamples
-  { moduleName =
-      ( SrcSpanInfo
-          { srcInfoSpan = SrcSpan "test/assets/Simple.hs" 1 1 11 1
-          , srcInfoPoints =
-              [ SrcSpan "test/assets/Simple.hs" 1 1 1 1
-              , SrcSpan "test/assets/Simple.hs" 1 1 1 1
-              , SrcSpan "test/assets/Simple.hs" 10 1 10 1
-              , SrcSpan "test/assets/Simple.hs" 11 1 11 1
-              , SrcSpan "test/assets/Simple.hs" 11 1 11 1
-              ]
-          }
-      , "Foo"
-      )
+  { moduleName = Just "Foo"
+  , moduleSource =
+      SrcSpanInfo
+        { srcInfoSpan = SrcSpan "test/assets/Simple.hs" 1 1 11 1
+        , srcInfoPoints =
+            [ SrcSpan "test/assets/Simple.hs" 1 1 1 1
+            , SrcSpan "test/assets/Simple.hs" 1 1 1 1
+            , SrcSpan "test/assets/Simple.hs" 10 1 10 1
+            , SrcSpan "test/assets/Simple.hs" 11 1 11 1
+            , SrcSpan "test/assets/Simple.hs" 11 1 11 1
+            ]
+        }
   , languageExtensions = []
   , comments =
       [ Comment

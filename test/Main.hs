@@ -6,7 +6,6 @@ import qualified Haskell.Verified.Examples as HVE
 import qualified System.Directory as Directory
 import Test (Test, describe, test)
 import qualified Test
-import qualified Tuple
 import qualified Prelude
 
 main :: Prelude.IO ()
@@ -122,7 +121,7 @@ tests =
                       result <-
                         parsed
                           |> HVE.examples
-                          |> Prelude.traverse (HVE.verify (Just modulePath) [Tuple.second <| HVE.moduleName parsed] (HVE.languageExtensions parsed))
+                          |> Prelude.traverse (HVE.verify (Just modulePath) (List.filterMap Prelude.id [HVE.moduleName parsed]) (HVE.languageExtensions parsed))
                           |> Expect.fromIO
                       Expect.fromResult
                         ( Ok

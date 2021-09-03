@@ -1,18 +1,17 @@
 ModuleWithExamples
-  { moduleName =
-      ( SrcSpanInfo
-          { srcInfoSpan =
-              SrcSpan "test/assets/UnverifiedExamples.hs" 1 1 22 1
-          , srcInfoPoints =
-              [ SrcSpan "test/assets/UnverifiedExamples.hs" 1 1 1 1
-              , SrcSpan "test/assets/UnverifiedExamples.hs" 1 1 1 1
-              , SrcSpan "test/assets/UnverifiedExamples.hs" 12 1 12 1
-              , SrcSpan "test/assets/UnverifiedExamples.hs" 22 1 22 1
-              , SrcSpan "test/assets/UnverifiedExamples.hs" 22 1 22 1
-              ]
-          }
-      , "Foo"
-      )
+  { moduleName = Just "Foo"
+  , moduleSource =
+      SrcSpanInfo
+        { srcInfoSpan =
+            SrcSpan "test/assets/UnverifiedExamples.hs" 1 1 22 1
+        , srcInfoPoints =
+            [ SrcSpan "test/assets/UnverifiedExamples.hs" 1 1 1 1
+            , SrcSpan "test/assets/UnverifiedExamples.hs" 1 1 1 1
+            , SrcSpan "test/assets/UnverifiedExamples.hs" 12 1 12 1
+            , SrcSpan "test/assets/UnverifiedExamples.hs" 22 1 22 1
+            , SrcSpan "test/assets/UnverifiedExamples.hs" 22 1 22 1
+            ]
+        }
   , languageExtensions = []
   , comments =
       [ Comment

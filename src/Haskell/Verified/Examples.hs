@@ -24,7 +24,8 @@ import qualified Prelude
 import qualified Text.Read
 
 data ModuleWithExamples = ModuleWithExamples
-  { moduleName :: (LHE.SrcLoc.SrcSpanInfo, Text),
+  { moduleName :: Maybe Text, -- Headless modules might not have a name
+    moduleSource :: LHE.SrcSpanInfo,
     languageExtensions :: List Text,
     comments :: List Comment,
     examples :: List Example
@@ -100,18 +101,20 @@ toModuleWithExamples ::
   ModuleWithExamples
 toModuleWithExamples parsed =
   case parsed of
-    (LHE.Syntax.Module srcSpanInfo (Just (LHE.Syntax.ModuleHead _ (LHE.Syntax.ModuleName _ name) _ _)) pragmas _ _, cs) ->
-      let comments = toComments cs
+    (LHE.Syntax.Module srcSpanInfo moduleHead pragmas _ _, cs) ->
+      let moduleName = case moduleHead of
+                         (Just (LHE.Syntax.ModuleHead _ (LHE.Syntax.ModuleName _ name) _ _)) -> Just <| Text.fromList name
+                         Nothing -> Nothing
+          comments = toComments cs
           examples = List.filterMap toExamples comments
           languageExtensions = [ Text.fromList n | LHE.Syntax.LanguagePragma _ ns <- pragmas, (LHE.Syntax.Ident _ n) <- ns ]
        in ModuleWithExamples
-            { moduleName = (srcSpanInfo, Text.fromList name),
+            { moduleName = moduleName,
+              moduleSource = srcSpanInfo,
               languageExtensions,
               comments,
               examples
             }
-    (LHE.Syntax.Module _ Nothing _ _ _, _) ->
-      Debug.todo "TODO no module head"
     _ ->
       Debug.todo "TODO unsupported module type"
 
@@ -167,7 +170,7 @@ parseFileWithComments ::
         )
     )
 parseFileWithComments path =
-  LHE.parseFileWithComments (LHE.defaultParseMode {LHE.parseFilename = path}) path
+  LHE.parseFileWithComments (LHE.defaultParseMode {LHE.parseFilename = path, LHE.extensions = [LHE.EnableExtension LHE.CPP] }) path
 
 pretty :: Verified -> List Text
 pretty verified =
