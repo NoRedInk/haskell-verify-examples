@@ -40,7 +40,7 @@ tests =
                 |> expectJust
             result <-
               example
-                |> HVE.verify Nothing [] []
+                |> HVE.verify Nothing Nothing [HVE.makeSimpleImport "NriPrelude"] []
                 |> Expect.fromIO
             result
               |> Debug.toString
@@ -51,7 +51,7 @@ tests =
                 |> expectJust
             result <-
               example
-                |> HVE.verify Nothing [] []
+                |> HVE.verify Nothing Nothing [HVE.makeSimpleImport "NriPrelude"] []
                 |> Expect.fromIO
             result
               |> Debug.toString
@@ -75,7 +75,7 @@ tests =
                   |> expectJust
               result <-
                 example
-                  |> HVE.verify Nothing ["List"] []
+                  |> HVE.verify Nothing Nothing [HVE.makeSimpleImport "List", HVE.makeSimpleImport "NriPrelude"] []
                   |> Expect.fromIO
               result
                 |> Debug.toString
@@ -98,7 +98,7 @@ tests =
                 |> expectJust
             result <-
               example
-                |> HVE.verify Nothing ["List"] []
+                |> HVE.verify Nothing Nothing [HVE.makeSimpleImport "List", HVE.makeSimpleImport "NriPrelude"] []
                 |> Expect.fromIO
             result
               |> Debug.toString
@@ -121,7 +121,7 @@ tests =
                       result <-
                         parsed
                           |> HVE.examples
-                          |> Prelude.traverse (HVE.verify (Just modulePath) (List.filterMap Prelude.id [HVE.moduleName parsed]) (HVE.languageExtensions parsed))
+                          |> Prelude.traverse (HVE.verify (Just modulePath) (HVE.moduleName parsed) (HVE.imports parsed) (HVE.languageExtensions parsed))
                           |> Expect.fromIO
                       Expect.fromResult
                         ( Ok

@@ -1,4 +1,8 @@
+{-# LANGUAGE NoImplicitPrelude #-}
+
 module AllVariations where
+
+import NriPrelude
 
 -- hello world
 --
