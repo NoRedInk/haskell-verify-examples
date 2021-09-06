@@ -1,4 +1,5 @@
 [ ( "test/assets/LanguageExtensions.hs" , [ Ok [] ] )
+, ( "test/assets/InternalFunction.hs" , [ Ok [] ] )
 , ( "test/assets/Simple.hs" , [ Ok [] , Ok [] ] )
 , ( "test/assets/UnverifiedExamples.hs"
   , [ Ok []
