@@ -241,7 +241,7 @@ commentType (LHE.Comments.Comment _ _ text) =
 
 concatComment :: LHE.Comments.Comment -> LHE.Comments.Comment -> LHE.Comments.Comment
 concatComment (LHE.Comments.Comment _ srcSpanA a) (LHE.Comments.Comment _ srcSpanB b) =
-  LHE.Comments.Comment True (LHE.SrcLoc.mergeSrcSpan srcSpanA srcSpanB) (Prelude.unlines [a, b])
+  LHE.Comments.Comment True (LHE.SrcLoc.mergeSrcSpan srcSpanA srcSpanB) (a ++ "\n" ++ b)
 
 toExample :: LHE.SrcLoc.SrcSpanInfo -> Text -> Example
 toExample srcLocInfo source =

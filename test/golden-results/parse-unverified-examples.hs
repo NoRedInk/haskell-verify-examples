@@ -31,7 +31,7 @@ Module
               { srcInfoSpan = SrcSpan "test/assets/UnverifiedExamples.hs" 7 1 8 3
               , srcInfoPoints = []
               }
-          , " hello world\n\n"
+          , " hello world\n"
           )
       , CodeBlockComment
           (VerifiedExample
@@ -40,7 +40,7 @@ Module
                      SrcSpan "test/assets/UnverifiedExamples.hs" 9 1 10 11
                  , srcInfoPoints = []
                  }
-             , "test\n==> 1\n"
+             , "test\n==> 1"
              ))
       , PlainTextComment
           ( SrcSpanInfo
@@ -74,7 +74,7 @@ Module
                      SrcSpan "test/assets/UnverifiedExamples.hs" 14 1 15 11
                  , srcInfoPoints = []
                  }
-             , "test + test\n==> 3\n"
+             , "test + test\n==> 3"
              ))
       , PlainTextComment
           ( SrcSpanInfo
@@ -82,7 +82,7 @@ Module
                   SrcSpan "test/assets/UnverifiedExamples.hs" 18 1 19 3
               , srcInfoPoints = []
               }
-          , " | more stuff\n\n"
+          , " | more stuff\n"
           )
       , CodeBlockComment
           (VerifiedExample
@@ -91,7 +91,7 @@ Module
                      SrcSpan "test/assets/UnverifiedExamples.hs" 20 1 25 21
                  , srcInfoPoints = []
                  }
-             , "[ 1\n, 2\n\n, 3\n\n, 4\n\n] |> map (+ 1)\n\n==> [ 2, 4, 5 ]\n"
+             , "[ 1\n, 2\n, 3\n, 4\n] |> map (+ 1)\n==> [ 2, 4, 5 ]"
              ))
       ]
   }
