@@ -13,6 +13,10 @@ module Haskell.Verified.Examples
 where
 
 import qualified Data.Foldable as Foldable
+import qualified HIE.Bios.Cradle
+import qualified HIE.Bios.Environment
+import qualified HIE.Bios.Flags
+import qualified HIE.Bios.Types
 import Haskell.Verified.Examples.Verified (Verified (..))
 import qualified Language.Haskell.Exts as LHE
 import qualified Language.Haskell.Exts.Comments as LHE.Comments
@@ -21,6 +25,7 @@ import qualified Language.Haskell.Exts.Parser as LHE.Parser
 import qualified Language.Haskell.Exts.SrcLoc as LHE.SrcLoc
 import qualified Language.Haskell.Exts.Syntax as LHE.Syntax
 import qualified Language.Haskell.Interpreter as Hint
+import qualified Language.Haskell.Interpreter.Unsafe as Hint.Unsafe
 import NriPrelude
 import qualified Paths_haskell_verified_examples as DataPath
 import qualified Text.Read
@@ -116,8 +121,26 @@ makeImport importDecl =
     importToString (LHE.Syntax.IThingWith _ n ns) = getName n ++ "(" ++ (List.concat <| List.intersperse "," (List.map getCName ns)) ++ ")"
 
 eval :: Maybe Prelude.FilePath -> Maybe Text -> List Hint.ModuleImport -> List Text -> Text -> Prelude.IO (Prelude.Either Hint.InterpreterError Verified)
-eval modulePath moduleName imports extensions s =
-  Hint.runInterpreter <| do
+eval modulePath moduleName imports extensions s = do
+  maybeFlags <- case modulePath of
+    Nothing -> Prelude.pure Nothing
+    Just path -> do
+      cradle <- HIE.Bios.Cradle.loadImplicitCradle path
+      cradleResult <- HIE.Bios.Flags.getCompilerOptions path cradle
+      case cradleResult of
+        HIE.Bios.Types.CradleSuccess r -> Prelude.pure (Just r)
+        err ->
+          let _ = Debug.log "err" err
+           in Debug.todo "TODO cradle failure"
+  let interpreter = case maybeFlags of
+        Nothing -> Hint.runInterpreter
+        Just flags -> \x ->
+          Hint.Unsafe.unsafeRunInterpreterWithArgs
+            ( HIE.Bios.Types.componentOptions flags
+                |> getPackageDbs []
+            )
+            x
+  interpreter <| do
     preload <- Hint.lift preloadPaths
 
     -- TODO: Throw nice "unrecognized extension" error instead of ignoring here
@@ -143,6 +166,11 @@ eval modulePath moduleName imports extensions s =
 
     Hint.setImportsF (exampleImports ++ imports)
     Hint.interpret (Text.toList s) (Hint.as :: Verified)
+
+getPackageDbs :: List Prelude.String -> List Prelude.String -> List Prelude.String
+getPackageDbs acc [] = List.reverse acc
+getPackageDbs acc ("-package-db" : x : rest) = getPackageDbs (x : "-package-db" : acc) rest
+getPackageDbs acc (_ : rest) = getPackageDbs acc rest
 
 exampleFromText :: Text -> Example
 exampleFromText val =

@@ -5,6 +5,7 @@ import qualified Data.Foldable
 import qualified Haskell.Verified.Examples as HVE
 import NriPrelude
 import qualified System.Directory
+import qualified System.Environment
 import System.FilePath.Find ((&&?), (==?))
 import qualified System.FilePath.Find as Find
 import qualified Prelude
@@ -12,7 +13,10 @@ import qualified Prelude
 main :: Prelude.IO ()
 main = do
   cwd <- System.Directory.getCurrentDirectory
-  files <- Find.find (noRCS &&? noDist) (Find.extension ==? ".hs") cwd
+  params <- System.Environment.getArgs
+  files <- case params of
+    [file] -> Prelude.pure [file]
+    [] -> Find.find (noRCS &&? noDist) (Find.extension ==? ".hs") cwd
   results <-
     files
       |> Prelude.traverse

@@ -1,7 +1,7 @@
 Module
   { moduleInfo =
       ModuleInfo
-        { moduleName = Just "Foo"
+        { moduleName = Just "UnverifiedExamples"
         , moduleSource =
             SrcSpanInfo
               { srcInfoSpan =
