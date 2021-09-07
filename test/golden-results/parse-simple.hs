@@ -4,15 +4,15 @@ Module
         { moduleName = Just "Foo"
         , moduleSource =
             SrcSpanInfo
-              { srcInfoSpan = SrcSpan "test/assets/Simple.hs" 1 1 15 1
+              { srcInfoSpan = SrcSpan "test/assets/Simple.hs" 1 1 17 1
               , srcInfoPoints =
                   [ SrcSpan "test/assets/Simple.hs" 1 1 1 1
                   , SrcSpan "test/assets/Simple.hs" 3 1 3 1
                   , SrcSpan "test/assets/Simple.hs" 3 1 3 1
                   , SrcSpan "test/assets/Simple.hs" 5 1 5 1
-                  , SrcSpan "test/assets/Simple.hs" 14 1 14 1
-                  , SrcSpan "test/assets/Simple.hs" 15 1 15 1
-                  , SrcSpan "test/assets/Simple.hs" 15 1 15 1
+                  , SrcSpan "test/assets/Simple.hs" 16 1 16 1
+                  , SrcSpan "test/assets/Simple.hs" 17 1 17 1
+                  , SrcSpan "test/assets/Simple.hs" 17 1 17 1
                   ]
               }
         , languageExtensions = [ "NoImplicitPrelude" ]
@@ -54,6 +54,21 @@ Module
                  , srcInfoPoints = []
                  }
              , "test + test\n==> 2\n"
+             ))
+      , PlainTextComment
+          ( SrcSpanInfo
+              { srcInfoSpan = SrcSpan "test/assets/Simple.hs" 14 1 14 3
+              , srcInfoPoints = []
+              }
+          , ""
+          )
+      , CodeBlockComment
+          (UnverifiedExample
+             ( SrcSpanInfo
+                 { srcInfoSpan = SrcSpan "test/assets/Simple.hs" 15 1 15 17
+                 , srcInfoPoints = []
+                 }
+             , "test + test"
              ))
       ]
   }

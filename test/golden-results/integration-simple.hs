@@ -1,6 +1,15 @@
 [ ( "test/assets/LanguageExtensions.hs" , [ Ok [] ] )
 , ( "test/assets/InternalFunction.hs" , [ Ok [] ] )
-, ( "test/assets/Simple.hs" , [ Ok [] , Ok [] ] )
+, ( "test/assets/Simple.hs"
+  , [ Ok []
+    , Ok []
+    , Ok
+        [ "No example result was provided. For example:"
+        , ""
+        , "test + test"
+        ]
+    ]
+  )
 , ( "test/assets/UnverifiedExamples.hs"
   , [ Ok []
     , Ok
