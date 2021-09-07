@@ -39,4 +39,4 @@ noDist =
   Prelude.flip
     Control.Monad.liftM
     Find.fileName
-    (Prelude.flip Data.Foldable.notElem ["dist-newstyle", "test"])
+    (Prelude.flip Data.Foldable.notElem ["_build", "dist-newstyle", "test"])
