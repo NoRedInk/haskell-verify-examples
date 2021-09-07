@@ -6,6 +6,7 @@ module Haskell.Verified.Examples
     Comment (..),
     verify,
     pretty,
+    makeSimpleImport
   )
 where
 
@@ -21,13 +22,19 @@ import qualified Language.Haskell.Exts.Syntax as LHE.Syntax
 import qualified Language.Haskell.Interpreter as Hint
 import NriPrelude
 import qualified Prelude
+import qualified Text.Read
+
+import qualified Paths_haskell_verified_examples as DataPath
 
 data ModuleWithExamples = ModuleWithExamples
-  { moduleName :: (LHE.SrcLoc.SrcSpanInfo, Text),
+  { moduleName :: Maybe Text, -- Headless modules might not have a name
+    moduleSource :: LHE.SrcSpanInfo,
+    languageExtensions :: List Text,
+    imports :: List Hint.ModuleImport,
     comments :: List Comment,
     examples :: List Example
   }
-  deriving (Show, Eq)
+  deriving (Show)
 
 data Comment
   = Comment (LHE.SrcLoc.SrcSpanInfo, Text)
@@ -43,11 +50,11 @@ data Example
 -- We can use setImportsQ.
 -- And obviously need to parse it.
 --
-verify :: Maybe Prelude.FilePath -> [Text] -> Example -> Prelude.IO (Result Text Verified)
-verify modulePath imports example =
+verify :: Maybe Prelude.FilePath -> Maybe Text -> [Hint.ModuleImport] -> [Text] -> Example -> Prelude.IO (Result Text Verified)
+verify modulePath moduleName imports extensions example =
   case example of
     VerifiedExample (_, code) -> do
-      result <- eval modulePath imports code
+      result <- eval modulePath moduleName imports extensions code
       case result of
         Prelude.Left err ->
           let _ = Debug.log "interpret error" err
@@ -55,23 +62,79 @@ verify modulePath imports example =
         Prelude.Right execResult -> Prelude.pure (Ok execResult)
     UnverifiedExample (_, code) ->
       code
+        |> Text.toList
         |> NoExampleResult
         |> Ok
         |> Prelude.pure
 
-eval :: Maybe Prelude.FilePath -> List Text -> Text -> Prelude.IO (Prelude.Either Hint.InterpreterError Verified)
-eval modulePath imports s =
+preloadPaths :: Prelude.IO (List Prelude.FilePath)
+preloadPaths = Prelude.traverse DataPath.getDataFileName paths
+  where paths = [ "src/Haskell/Verified/Examples/RunTime.hs"
+                , "src/Haskell/Verified/Examples/Verified.hs"
+                ]
+
+makeSimpleImport :: Text -> Hint.ModuleImport 
+makeSimpleImport name = Hint.ModuleImport (Text.toList name) Hint.NotQualified Hint.NoImportList
+
+makeImport :: LHE.Syntax.ImportDecl LHE.SrcLoc.SrcSpanInfo -> Hint.ModuleImport
+makeImport importDecl = Hint.ModuleImport 
+                        { Hint.modName = getModName <| LHE.Syntax.importModule importDecl
+                        , Hint.modQual = modQual
+                        , Hint.modImp = importList
+                        }
+  where getName (LHE.Syntax.Ident _ n) = n
+        getName (LHE.Syntax.Symbol _ n) = n
+        getModName (LHE.Syntax.ModuleName _ n) = n
+        getCName (LHE.Syntax.VarName _ n) = getName n
+        getCName (LHE.Syntax.ConName _ n) = getName n
+        modQual = case (LHE.Syntax.importQualified importDecl, LHE.Syntax.importAs importDecl) of
+                    -- import Foo
+                    (False, Nothing) -> Hint.NotQualified 
+
+                    -- import Foo as Bar
+                    (False, Just name) -> Hint.ImportAs <| getModName name
+
+                    -- import qualified Foo
+                    (True, Nothing) -> Hint.QualifiedAs Nothing
+
+                    -- import qualified Foo as Bar
+                    (True, Just name) -> Hint.QualifiedAs (Just <| getModName name)
+
+        importList = case LHE.Syntax.importSpecs importDecl of 
+                       Nothing -> Hint.NoImportList 
+                       Just (LHE.Syntax.ImportSpecList _ False names) -> Hint.ImportList <| List.map importToString names
+                       Just (LHE.Syntax.ImportSpecList _ True names) -> Hint.HidingList <| List.map importToString names
+
+        importToString (LHE.Syntax.IVar _ n) = getName n
+        importToString (LHE.Syntax.IAbs _ _ n) = getName n
+        importToString (LHE.Syntax.IThingAll _ n) = getName n ++ "(..)"
+        importToString (LHE.Syntax.IThingWith _ n ns) = getName n ++ "(" ++ (List.concat <| List.intersperse "," (List.map getCName ns)) ++ ")"
+
+eval :: Maybe Prelude.FilePath -> Maybe Text -> List Hint.ModuleImport -> List Text -> Text -> Prelude.IO (Prelude.Either Hint.InterpreterError Verified)
+eval modulePath moduleName imports extensions s =
   Hint.runInterpreter <| do
-    let preload =
-          [ "src/Haskell/Verified/Examples/RunTime.hs",
-            "src/Haskell/Verified/Examples/Verified.hs"
-          ]
+    preload <- Hint.lift preloadPaths
+
+    -- TODO: Throw nice "unrecognized extension" error instead of ignoring here
+    let langs = List.filterMap (\ex -> Text.Read.readMaybe <| Text.toList ex) extensions
+    Hint.set [ Hint.languageExtensions Hint.:= langs ]
+
     Hint.loadModules
       ( case modulePath of
           Just path -> path : preload
           Nothing -> preload
       )
-    Hint.setImports ("NriPrelude" : "Haskell.Verified.Examples.RunTime" : "Haskell.Verified.Examples.Verified" : List.map Text.toList imports)
+
+    case moduleName of
+        Just name -> Hint.setTopLevelModules [Text.toList name]
+        Nothing -> Prelude.return ()
+
+    let exampleImports = List.map makeSimpleImport 
+                         ["Haskell.Verified.Examples.RunTime"
+                         , "Haskell.Verified.Examples.Verified"
+                         ]
+
+    Hint.setImportsF (exampleImports ++ imports)
     Hint.interpret (Text.toList s) (Hint.as :: Verified)
 
 exampleFromText :: Text -> Maybe Example
@@ -94,16 +157,21 @@ toModuleWithExamples ::
   ModuleWithExamples
 toModuleWithExamples parsed =
   case parsed of
-    (LHE.Syntax.Module srcSpanInfo (Just (LHE.Syntax.ModuleHead _ (LHE.Syntax.ModuleName _ name) _ _)) _ _ _, cs) ->
-      let comments = toComments cs
+    (LHE.Syntax.Module srcSpanInfo moduleHead pragmas imports _, cs) ->
+      let moduleName = case moduleHead of
+                         (Just (LHE.Syntax.ModuleHead _ (LHE.Syntax.ModuleName _ name) _ _)) -> Just <| Text.fromList name
+                         Nothing -> Nothing
+          comments = toComments cs
           examples = List.filterMap toExamples comments
+          languageExtensions = [ Text.fromList n | LHE.Syntax.LanguagePragma _ ns <- pragmas, (LHE.Syntax.Ident _ n) <- ns ]
        in ModuleWithExamples
-            { moduleName = (srcSpanInfo, Text.fromList name),
+            { moduleName = moduleName,
+              moduleSource = srcSpanInfo,
+              languageExtensions,
+              imports = List.map makeImport imports,
               comments,
               examples
             }
-    (LHE.Syntax.Module _ Nothing _ _ _, _) ->
-      Debug.todo "TODO no module head"
     _ ->
       Debug.todo "TODO unsupported module type"
 
@@ -159,7 +227,7 @@ parseFileWithComments ::
         )
     )
 parseFileWithComments path =
-  LHE.parseFileWithComments (LHE.defaultParseMode {LHE.parseFilename = path}) path
+  LHE.parseFileWithComments (LHE.defaultParseMode {LHE.parseFilename = path, LHE.extensions = [LHE.EnableExtension LHE.CPP] }) path
 
 pretty :: Verified -> List Text
 pretty verified =
@@ -169,13 +237,13 @@ pretty verified =
       [ "The example was incorrect and couldn't be verified.",
         "",
         "We expected:",
-        expected,
+        Text.fromList expected,
         "",
         "but received",
-        actual
+        Text.fromList actual
       ]
     NoExampleResult example ->
       [ "No example result was provided. For example:",
         "",
-        example
+        Text.fromList example
       ]

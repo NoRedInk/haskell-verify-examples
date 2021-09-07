@@ -21,7 +21,7 @@ main = do
             result <-
               parsed
                 |> HVE.examples
-                |> Prelude.traverse (HVE.verify (Just modulePath) [Tuple.second <| HVE.moduleName parsed])
+                |> Prelude.traverse (HVE.verify (Just modulePath) (HVE.imports parsed) (HVE.languageExtensions parsed))
             Prelude.pure (modulePath, result)
         )
   let _ = Debug.log "results" results

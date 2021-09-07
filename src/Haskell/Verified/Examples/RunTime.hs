@@ -1,14 +1,12 @@
 module Haskell.Verified.Examples.RunTime ((==>)) where
 
-import qualified Debug
 import Haskell.Verified.Examples.Verified (Verified (..))
-import NriPrelude
-import Prelude hiding ((==))
+import qualified Prelude
 
 infixl 0 ==>
 
-(==>) :: (Show a, Eq a) => a -> a -> Verified
+(==>) :: (Prelude.Show a, Prelude.Eq a) => a -> a -> Verified
 x ==> y =
-  if x == y
+  if x Prelude.== y
     then Verified
-    else Unverified (Debug.toString x) (Debug.toString y)
+    else Unverified (Prelude.show x) (Prelude.show y)

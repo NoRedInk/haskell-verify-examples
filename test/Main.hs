@@ -6,7 +6,6 @@ import qualified Haskell.Verified.Examples as HVE
 import qualified System.Directory as Directory
 import Test (Test, describe, test)
 import qualified Test
-import qualified Tuple
 import qualified Prelude
 
 main :: Prelude.IO ()
@@ -41,7 +40,7 @@ tests =
                 |> expectJust
             result <-
               example
-                |> HVE.verify Nothing []
+                |> HVE.verify Nothing Nothing [HVE.makeSimpleImport "NriPrelude"] []
                 |> Expect.fromIO
             result
               |> Debug.toString
@@ -52,7 +51,7 @@ tests =
                 |> expectJust
             result <-
               example
-                |> HVE.verify Nothing []
+                |> HVE.verify Nothing Nothing [HVE.makeSimpleImport "NriPrelude"] []
                 |> Expect.fromIO
             result
               |> Debug.toString
@@ -76,7 +75,7 @@ tests =
                   |> expectJust
               result <-
                 example
-                  |> HVE.verify Nothing ["List"]
+                  |> HVE.verify Nothing Nothing [HVE.makeSimpleImport "List", HVE.makeSimpleImport "NriPrelude"] []
                   |> Expect.fromIO
               result
                 |> Debug.toString
@@ -99,7 +98,7 @@ tests =
                 |> expectJust
             result <-
               example
-                |> HVE.verify Nothing ["List"]
+                |> HVE.verify Nothing Nothing [HVE.makeSimpleImport "List", HVE.makeSimpleImport "NriPrelude"] []
                 |> Expect.fromIO
             result
               |> Debug.toString
@@ -122,7 +121,7 @@ tests =
                       result <-
                         parsed
                           |> HVE.examples
-                          |> Prelude.traverse (HVE.verify (Just modulePath) [Tuple.second <| HVE.moduleName parsed])
+                          |> Prelude.traverse (HVE.verify (Just modulePath) (HVE.moduleName parsed) (HVE.imports parsed) (HVE.languageExtensions parsed))
                           |> Expect.fromIO
                       Expect.fromResult
                         ( Ok

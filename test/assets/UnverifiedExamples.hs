@@ -1,4 +1,8 @@
+{-# LANGUAGE NoImplicitPrelude #-}
+
 module Foo where
+
+import NriPrelude
 
 -- hello world
 --

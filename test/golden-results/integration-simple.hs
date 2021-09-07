@@ -1,4 +1,6 @@
-[ ( "test/assets/Simple.hs" , [ Ok [] , Ok [] ] )
+[ ( "test/assets/LanguageExtensions.hs" , [ Ok [] ] )
+, ( "test/assets/InternalFunction.hs" , [ Ok [] ] )
+, ( "test/assets/Simple.hs" , [ Ok [] , Ok [] ] )
 , ( "test/assets/UnverifiedExamples.hs"
   , [ Ok []
     , Ok
@@ -16,14 +18,15 @@
         [ "The example was incorrect and couldn't be verified."
         , ""
         , "We expected:"
-        , "[ 2 , 3 , 4 , 5 ]"
+        , "[2,3,4,5]"
         , ""
         , "but received"
-        , "[ 2 , 4 , 5 ]"
+        , "[2,4,5]"
         ]
     ]
   )
 , ( "test/assets/AllVariations.hs"
   , [ Ok [] , Ok [] , Ok [] , Ok [] , Ok [] ]
   )
+, ( "test/assets/Headless.hs" , [ Ok [] ] )
 ]
