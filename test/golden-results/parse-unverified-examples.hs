@@ -1,4 +1,4 @@
-ModuleWithExamples
+Module
   { moduleInfo =
       ModuleInfo
         { moduleName = Just "Foo"

@@ -1,6 +1,6 @@
 module Haskell.Verified.Examples
   ( parse,
-    ModuleWithExamples (..),
+    Module (..),
     ModuleInfo (..),
     Example (..),
     exampleFromText,
@@ -26,7 +26,7 @@ import qualified Paths_haskell_verified_examples as DataPath
 import qualified Text.Read
 import qualified Prelude
 
-data ModuleWithExamples = ModuleWithExamples
+data Module = Module
   { moduleInfo :: ModuleInfo,
     comments :: List Comment,
     examples :: List Example
@@ -150,7 +150,7 @@ exampleFromText val =
   ExampleComment (LHE.SrcLoc.noSrcSpan, val)
     |> toExamples
 
-parse :: Prelude.FilePath -> Prelude.IO ModuleWithExamples
+parse :: Prelude.FilePath -> Prelude.IO Module
 parse path = do
   parsed <- parseFileWithComments path
   case parsed of
@@ -162,7 +162,7 @@ toModuleWithExamples ::
   ( LHE.Syntax.Module LHE.SrcLoc.SrcSpanInfo,
     List LHE.Comments.Comment
   ) ->
-  ModuleWithExamples
+  Module
 toModuleWithExamples parsed =
   case parsed of
     (LHE.Syntax.Module moduleSource moduleHead pragmas imports _, cs) ->
@@ -172,7 +172,7 @@ toModuleWithExamples parsed =
           comments = toComments cs
           examples = List.filterMap toExamples comments
           languageExtensions = [Text.fromList n | LHE.Syntax.LanguagePragma _ ns <- pragmas, (LHE.Syntax.Ident _ n) <- ns]
-       in ModuleWithExamples
+       in Module
             { moduleInfo =
                 ModuleInfo
                   { moduleName,
