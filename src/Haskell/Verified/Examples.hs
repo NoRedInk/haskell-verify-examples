@@ -3,6 +3,7 @@ module Haskell.Verified.Examples
     Module (..),
     ModuleInfo (..),
     Example (..),
+    examples,
     exampleFromText,
     Comment (..),
     verify,
@@ -17,7 +18,6 @@ import qualified Language.Haskell.Exts as LHE
 import qualified Language.Haskell.Exts.Comments as LHE.Comments
 import qualified Language.Haskell.Exts.Lexer as LHE.Lexer
 import qualified Language.Haskell.Exts.Parser as LHE.Parser
-import Language.Haskell.Exts.SrcLoc ((<++>))
 import qualified Language.Haskell.Exts.SrcLoc as LHE.SrcLoc
 import qualified Language.Haskell.Exts.Syntax as LHE.Syntax
 import qualified Language.Haskell.Interpreter as Hint
@@ -28,8 +28,7 @@ import qualified Prelude
 
 data Module = Module
   { moduleInfo :: ModuleInfo,
-    comments :: List Comment,
-    examples :: List Example
+    comments :: List Comment
   }
   deriving (Show)
 
@@ -42,8 +41,8 @@ data ModuleInfo = ModuleInfo
   deriving (Show)
 
 data Comment
-  = Comment (LHE.SrcLoc.SrcSpanInfo, Text)
-  | ExampleComment (LHE.SrcLoc.SrcSpanInfo, Text)
+  = PlainTextComment (LHE.SrcLoc.SrcSpanInfo, Text)
+  | CodeBlockComment LHE.SrcLoc.SrcSpanInfo Example
   deriving (Show, Eq)
 
 data Example
@@ -145,32 +144,38 @@ eval modulePath moduleName imports extensions s =
     Hint.setImportsF (exampleImports ++ imports)
     Hint.interpret (Text.toList s) (Hint.as :: Verified)
 
-exampleFromText :: Text -> Maybe Example
+exampleFromText :: Text -> Example
 exampleFromText val =
-  ExampleComment (LHE.SrcLoc.noSrcSpan, val)
-    |> toExamples
+  toExample LHE.SrcLoc.noSrcSpan val
 
 parse :: Prelude.FilePath -> Prelude.IO Module
 parse path = do
   parsed <- parseFileWithComments path
   case parsed of
-    LHE.Parser.ParseOk ok -> Prelude.pure (toModuleWithExamples ok)
+    LHE.Parser.ParseOk ok -> Prelude.pure (toModule ok)
     LHE.Parser.ParseFailed x msg ->
       Debug.todo (Debug.toString x ++ Debug.toString msg)
 
-toModuleWithExamples ::
+examples :: List Comment -> List Example
+examples =
+  List.filterMap
+    ( \c ->
+        case c of
+          PlainTextComment _ -> Nothing
+          CodeBlockComment _ example -> Just example
+    )
+
+toModule ::
   ( LHE.Syntax.Module LHE.SrcLoc.SrcSpanInfo,
     List LHE.Comments.Comment
   ) ->
   Module
-toModuleWithExamples parsed =
+toModule parsed =
   case parsed of
     (LHE.Syntax.Module moduleSource moduleHead pragmas imports _, cs) ->
       let moduleName = case moduleHead of
             (Just (LHE.Syntax.ModuleHead _ (LHE.Syntax.ModuleName _ name) _ _)) -> Just <| Text.fromList name
             Nothing -> Nothing
-          comments = toComments cs
-          examples = List.filterMap toExamples comments
           languageExtensions = [Text.fromList n | LHE.Syntax.LanguagePragma _ ns <- pragmas, (LHE.Syntax.Ident _ n) <- ns]
        in Module
             { moduleInfo =
@@ -180,8 +185,7 @@ toModuleWithExamples parsed =
                     languageExtensions,
                     imports = List.map makeImport imports
                   },
-              comments,
-              examples
+              comments = toComments cs
             }
     _ ->
       Debug.todo "TODO unsupported module type"
@@ -189,45 +193,67 @@ toModuleWithExamples parsed =
 toComments :: List LHE.Comments.Comment -> List Comment
 toComments cs =
   cs
+    |> mergeComments []
     |> List.map
-      ( \(LHE.Comments.Comment _ srcSpan val) ->
+      ( \(ct, LHE.Comments.Comment _ srcSpan val) ->
           let val_ = Text.fromList val
-           in if Text.startsWith " > " val_
-                then ExampleComment (LHE.SrcLoc.noInfoSpan srcSpan, Text.dropLeft 3 val_)
-                else Comment (LHE.SrcLoc.noInfoSpan srcSpan, val_)
+           in case ct of
+                CodeBlock ->
+                  let srcSpanInfo = LHE.SrcLoc.noInfoSpan srcSpan
+                   in CodeBlockComment
+                        srcSpanInfo
+                        (toExample srcSpanInfo val_)
+                PlainText -> PlainTextComment (LHE.SrcLoc.noInfoSpan srcSpan, val_)
       )
-    |> mergeComments
 
-toExamples :: Comment -> Maybe Example
-toExamples (Comment _) = Nothing
-toExamples (ExampleComment (srcLocInfo, source)) =
+data CommentType = CodeBlock | PlainText
+  deriving (Show)
+
+mergeComments :: List (CommentType, LHE.Comments.Comment) -> List LHE.Comments.Comment -> List (CommentType, LHE.Comments.Comment)
+mergeComments acc [] = List.reverse acc
+mergeComments [] (next : rest) =
+  mergeComments
+    [ case commentType next of
+        CodeBlock -> (CodeBlock, cleanCodeBlock next)
+        PlainText -> (PlainText, next)
+    ]
+    rest
+mergeComments (prev@(prevCT, prevComment) : acc) (next : rest) =
+  mergeComments
+    ( case (prevCT, commentType next) of
+        (CodeBlock, CodeBlock) -> (CodeBlock, concatComment prevComment (cleanCodeBlock next)) : acc
+        (PlainText, PlainText) -> (PlainText, concatComment prevComment next) : acc
+        (PlainText, CodeBlock) -> (CodeBlock, cleanCodeBlock next) : prev : acc
+        (CodeBlock, PlainText) -> (PlainText, next) : prev : acc
+    )
+    rest
+
+cleanCodeBlock :: LHE.Comments.Comment -> LHE.Comments.Comment
+cleanCodeBlock (LHE.Comments.Comment t s text) =
+  text
+    |> Prelude.drop 3
+    |> LHE.Comments.Comment t s
+
+commentType :: LHE.Comments.Comment -> CommentType
+commentType (LHE.Comments.Comment _ _ text) =
+  if Text.startsWith " > " (Text.fromList text)
+    then CodeBlock
+    else PlainText
+
+concatComment :: LHE.Comments.Comment -> LHE.Comments.Comment -> LHE.Comments.Comment
+concatComment (LHE.Comments.Comment _ srcSpanA a) (LHE.Comments.Comment _ srcSpanB b) =
+  LHE.Comments.Comment True (LHE.SrcLoc.mergeSrcSpan srcSpanA srcSpanB) (Prelude.unlines [a, b])
+
+toExample :: LHE.SrcLoc.SrcSpanInfo -> Text -> Example
+toExample srcLocInfo source =
   case LHE.Lexer.lexTokenStream (Text.toList source) of
     LHE.Parser.ParseOk tokens ->
-      let verified = Foldable.any ((== LHE.Lexer.VarSym "==>") << LHE.Lexer.unLoc) tokens
-       in Just
-            <| if verified
-              then VerifiedExample (srcLocInfo, source)
-              else UnverifiedExample (srcLocInfo, source)
+      if Foldable.any ((== LHE.Lexer.VarSym "==>") << LHE.Lexer.unLoc) tokens
+        then VerifiedExample (srcLocInfo, source)
+        else UnverifiedExample (srcLocInfo, source)
     LHE.Parser.ParseFailed _ msg ->
       let _ = Debug.log "msg" msg
        in Debug.todo "TODO"
-
-mergeComments :: List Comment -> List Comment
-mergeComments cs =
-  List.foldl
-    ( \c xs ->
-        case (c, xs) of
-          (_, []) -> [c]
-          (Comment (x, y), Comment (px, py) : rest) ->
-            Comment (x <++> px, py ++ "\n" ++ y) : rest
-          (ExampleComment (x, y), ExampleComment (px, py) : rest) ->
-            ExampleComment (x <++> px, py ++ "\n" ++ y) : rest
-          (c', prev : rest) ->
-            c' : prev : rest
-    )
-    []
-    cs
-    |> List.reverse
 
 parseFileWithComments ::
   Prelude.FilePath ->

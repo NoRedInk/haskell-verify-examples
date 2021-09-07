@@ -20,6 +20,7 @@ main = do
             parsed <- HVE.parse modulePath
             result <-
               parsed
+                |> HVE.comments
                 |> HVE.examples
                 |> Prelude.traverse
                   ( HVE.verify

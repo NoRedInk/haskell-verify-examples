@@ -26,22 +26,28 @@ Module
             ]
         }
   , comments =
-      [ Comment
+      [ PlainTextComment
           ( SrcSpanInfo
               { srcInfoSpan = SrcSpan "test/assets/UnverifiedExamples.hs" 7 1 8 3
               , srcInfoPoints = []
               }
-          , " hello world\n"
+          , " hello world\n\n"
           )
-      , ExampleComment
-          ( SrcSpanInfo
-              { srcInfoSpan =
-                  SrcSpan "test/assets/UnverifiedExamples.hs" 9 1 10 11
-              , srcInfoPoints = []
-              }
-          , "test\n==> 1"
-          )
-      , Comment
+      , CodeBlockComment
+          SrcSpanInfo
+            { srcInfoSpan =
+                SrcSpan "test/assets/UnverifiedExamples.hs" 9 1 10 11
+            , srcInfoPoints = []
+            }
+          (VerifiedExample
+             ( SrcSpanInfo
+                 { srcInfoSpan =
+                     SrcSpan "test/assets/UnverifiedExamples.hs" 9 1 10 11
+                 , srcInfoPoints = []
+                 }
+             , "test\n==> 1\n"
+             ))
+      , PlainTextComment
           ( SrcSpanInfo
               { srcInfoSpan =
                   SrcSpan "test/assets/UnverifiedExamples.hs" 11 1 11 3
@@ -49,15 +55,21 @@ Module
               }
           , ""
           )
-      , ExampleComment
-          ( SrcSpanInfo
-              { srcInfoSpan =
-                  SrcSpan "test/assets/UnverifiedExamples.hs" 12 1 12 10
-              , srcInfoPoints = []
-              }
-          , "test"
-          )
-      , Comment
+      , CodeBlockComment
+          SrcSpanInfo
+            { srcInfoSpan =
+                SrcSpan "test/assets/UnverifiedExamples.hs" 12 1 12 10
+            , srcInfoPoints = []
+            }
+          (UnverifiedExample
+             ( SrcSpanInfo
+                 { srcInfoSpan =
+                     SrcSpan "test/assets/UnverifiedExamples.hs" 12 1 12 10
+                 , srcInfoPoints = []
+                 }
+             , "test"
+             ))
+      , PlainTextComment
           ( SrcSpanInfo
               { srcInfoSpan =
                   SrcSpan "test/assets/UnverifiedExamples.hs" 13 1 13 3
@@ -65,63 +77,41 @@ Module
               }
           , ""
           )
-      , ExampleComment
-          ( SrcSpanInfo
-              { srcInfoSpan =
-                  SrcSpan "test/assets/UnverifiedExamples.hs" 14 1 15 11
-              , srcInfoPoints = []
-              }
-          , "test + test\n==> 3"
-          )
-      , Comment
+      , CodeBlockComment
+          SrcSpanInfo
+            { srcInfoSpan =
+                SrcSpan "test/assets/UnverifiedExamples.hs" 14 1 15 11
+            , srcInfoPoints = []
+            }
+          (VerifiedExample
+             ( SrcSpanInfo
+                 { srcInfoSpan =
+                     SrcSpan "test/assets/UnverifiedExamples.hs" 14 1 15 11
+                 , srcInfoPoints = []
+                 }
+             , "test + test\n==> 3\n"
+             ))
+      , PlainTextComment
           ( SrcSpanInfo
               { srcInfoSpan =
                   SrcSpan "test/assets/UnverifiedExamples.hs" 18 1 19 3
               , srcInfoPoints = []
               }
-          , " | more stuff\n"
+          , " | more stuff\n\n"
           )
-      , ExampleComment
-          ( SrcSpanInfo
-              { srcInfoSpan =
-                  SrcSpan "test/assets/UnverifiedExamples.hs" 20 1 25 21
-              , srcInfoPoints = []
-              }
-          , "[ 1\n, 2\n, 3\n, 4\n] |> map (+ 1)\n==> [ 2, 4, 5 ]"
-          )
-      ]
-  , examples =
-      [ VerifiedExample
-          ( SrcSpanInfo
-              { srcInfoSpan =
-                  SrcSpan "test/assets/UnverifiedExamples.hs" 9 1 10 11
-              , srcInfoPoints = []
-              }
-          , "test\n==> 1"
-          )
-      , UnverifiedExample
-          ( SrcSpanInfo
-              { srcInfoSpan =
-                  SrcSpan "test/assets/UnverifiedExamples.hs" 12 1 12 10
-              , srcInfoPoints = []
-              }
-          , "test"
-          )
-      , VerifiedExample
-          ( SrcSpanInfo
-              { srcInfoSpan =
-                  SrcSpan "test/assets/UnverifiedExamples.hs" 14 1 15 11
-              , srcInfoPoints = []
-              }
-          , "test + test\n==> 3"
-          )
-      , VerifiedExample
-          ( SrcSpanInfo
-              { srcInfoSpan =
-                  SrcSpan "test/assets/UnverifiedExamples.hs" 20 1 25 21
-              , srcInfoPoints = []
-              }
-          , "[ 1\n, 2\n, 3\n, 4\n] |> map (+ 1)\n==> [ 2, 4, 5 ]"
-          )
+      , CodeBlockComment
+          SrcSpanInfo
+            { srcInfoSpan =
+                SrcSpan "test/assets/UnverifiedExamples.hs" 20 1 25 21
+            , srcInfoPoints = []
+            }
+          (VerifiedExample
+             ( SrcSpanInfo
+                 { srcInfoSpan =
+                     SrcSpan "test/assets/UnverifiedExamples.hs" 20 1 25 21
+                 , srcInfoPoints = []
+                 }
+             , "[ 1\n, 2\n\n, 3\n\n, 4\n\n] |> map (+ 1)\n\n==> [ 2, 4, 5 ]\n"
+             ))
       ]
   }

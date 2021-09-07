@@ -25,49 +25,43 @@ Module
             ]
         }
   , comments =
-      [ Comment
+      [ PlainTextComment
           ( SrcSpanInfo
               { srcInfoSpan = SrcSpan "test/assets/Simple.hs" 7 1 8 3
               , srcInfoPoints = []
               }
-          , " hello world\n"
+          , " hello world\n\n"
           )
-      , ExampleComment
-          ( SrcSpanInfo
-              { srcInfoSpan = SrcSpan "test/assets/Simple.hs" 9 1 10 11
-              , srcInfoPoints = []
-              }
-          , "test\n==> 1"
-          )
-      , Comment
+      , CodeBlockComment
+          SrcSpanInfo
+            { srcInfoSpan = SrcSpan "test/assets/Simple.hs" 9 1 10 11
+            , srcInfoPoints = []
+            }
+          (VerifiedExample
+             ( SrcSpanInfo
+                 { srcInfoSpan = SrcSpan "test/assets/Simple.hs" 9 1 10 11
+                 , srcInfoPoints = []
+                 }
+             , "test\n==> 1\n"
+             ))
+      , PlainTextComment
           ( SrcSpanInfo
               { srcInfoSpan = SrcSpan "test/assets/Simple.hs" 11 1 11 3
               , srcInfoPoints = []
               }
           , ""
           )
-      , ExampleComment
-          ( SrcSpanInfo
-              { srcInfoSpan = SrcSpan "test/assets/Simple.hs" 12 1 13 11
-              , srcInfoPoints = []
-              }
-          , "test + test\n==> 2"
-          )
-      ]
-  , examples =
-      [ VerifiedExample
-          ( SrcSpanInfo
-              { srcInfoSpan = SrcSpan "test/assets/Simple.hs" 9 1 10 11
-              , srcInfoPoints = []
-              }
-          , "test\n==> 1"
-          )
-      , VerifiedExample
-          ( SrcSpanInfo
-              { srcInfoSpan = SrcSpan "test/assets/Simple.hs" 12 1 13 11
-              , srcInfoPoints = []
-              }
-          , "test + test\n==> 2"
-          )
+      , CodeBlockComment
+          SrcSpanInfo
+            { srcInfoSpan = SrcSpan "test/assets/Simple.hs" 12 1 13 11
+            , srcInfoPoints = []
+            }
+          (VerifiedExample
+             ( SrcSpanInfo
+                 { srcInfoSpan = SrcSpan "test/assets/Simple.hs" 12 1 13 11
+                 , srcInfoPoints = []
+                 }
+             , "test + test\n==> 2\n"
+             ))
       ]
   }

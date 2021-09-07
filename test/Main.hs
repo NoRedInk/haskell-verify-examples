@@ -1,7 +1,6 @@
 module Main (main) where
 
 import qualified Expect
-import qualified GHC.Stack as Stack
 import qualified Haskell.Verified.Examples as HVE
 import qualified Language.Haskell.Exts.SrcLoc as LHE.SrcLoc
 import qualified System.Directory as Directory
@@ -36,9 +35,7 @@ tests =
       describe
         "verify"
         [ test "verfies an example when it succeeds" <| \() -> do
-            example <-
-              HVE.exampleFromText "1 + 1 ==> 2"
-                |> expectJust
+            let example = HVE.exampleFromText "1 + 1 ==> 2"
             result <-
               example
                 |> HVE.verify
@@ -54,9 +51,7 @@ tests =
               |> Debug.toString
               |> Expect.equalToContentsOf "test/golden-results/verify-verified.hs",
           test "verfies an example when it fails" <| \() -> do
-            example <-
-              HVE.exampleFromText "1 + 1 ==> 3"
-                |> expectJust
+            let example = HVE.exampleFromText "1 + 1 ==> 3"
             result <-
               example
                 |> HVE.verify
@@ -73,21 +68,20 @@ tests =
               |> Expect.equalToContentsOf "test/golden-results/verify-unverified.hs",
           test "verfies multiline example (succeeds)" <| \() ->
             do
-              example <-
-                [ "[ 1",
-                  ", 2",
-                  ", 3",
-                  "]",
-                  "|> List.map (+ 1)",
-                  "==>",
-                  "[ 2",
-                  ", 3",
-                  ", 4",
-                  "]"
-                  ]
-                  |> Text.join "\n"
-                  |> HVE.exampleFromText
-                  |> expectJust
+              let example =
+                    [ "[ 1",
+                      ", 2",
+                      ", 3",
+                      "]",
+                      "|> List.map (+ 1)",
+                      "==>",
+                      "[ 2",
+                      ", 3",
+                      ", 4",
+                      "]"
+                    ]
+                      |> Text.join "\n"
+                      |> HVE.exampleFromText
               result <-
                 example
                   |> HVE.verify
@@ -106,21 +100,20 @@ tests =
                 |> Debug.toString
                 |> Expect.equalToContentsOf "test/golden-results/verify-multiline-verified.hs",
           test "verfies multiline example (fails)" <| \() -> do
-            example <-
-              [ "[ 1",
-                ", 2",
-                ", 3",
-                "]",
-                "|> List.map (+ 1)",
-                "==>",
-                "[ 2",
-                ", 3",
-                ", 5",
-                "]"
-                ]
-                |> Text.join "\n"
-                |> HVE.exampleFromText
-                |> expectJust
+            let example =
+                  [ "[ 1",
+                    ", 2",
+                    ", 3",
+                    "]",
+                    "|> List.map (+ 1)",
+                    "==>",
+                    "[ 2",
+                    ", 3",
+                    ", 5",
+                    "]"
+                  ]
+                    |> Text.join "\n"
+                    |> HVE.exampleFromText
             result <-
               example
                 |> HVE.verify
@@ -155,6 +148,7 @@ tests =
                           |> Expect.fromIO
                       result <-
                         parsed
+                          |> HVE.comments
                           |> HVE.examples
                           |> Prelude.traverse (HVE.verify (Just modulePath) (HVE.moduleInfo parsed))
                           |> Expect.fromIO
@@ -170,10 +164,3 @@ tests =
               |> Expect.equalToContentsOf "test/golden-results/integration-simple.hs"
         ]
     ]
-
-expectJust :: Stack.HasCallStack => Maybe a -> Expect.Expectation' a
-expectJust m = do
-  case m of
-    Just x -> Ok x
-    Nothing -> Err "Expected one Just but got Nothing"
-    |> Stack.withFrozenCallStack Expect.fromResult
