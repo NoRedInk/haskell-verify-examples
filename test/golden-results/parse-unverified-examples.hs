@@ -34,11 +34,6 @@ Module
           , " hello world\n\n"
           )
       , CodeBlockComment
-          SrcSpanInfo
-            { srcInfoSpan =
-                SrcSpan "test/assets/UnverifiedExamples.hs" 9 1 10 11
-            , srcInfoPoints = []
-            }
           (VerifiedExample
              ( SrcSpanInfo
                  { srcInfoSpan =
@@ -56,11 +51,6 @@ Module
           , ""
           )
       , CodeBlockComment
-          SrcSpanInfo
-            { srcInfoSpan =
-                SrcSpan "test/assets/UnverifiedExamples.hs" 12 1 12 10
-            , srcInfoPoints = []
-            }
           (UnverifiedExample
              ( SrcSpanInfo
                  { srcInfoSpan =
@@ -78,11 +68,6 @@ Module
           , ""
           )
       , CodeBlockComment
-          SrcSpanInfo
-            { srcInfoSpan =
-                SrcSpan "test/assets/UnverifiedExamples.hs" 14 1 15 11
-            , srcInfoPoints = []
-            }
           (VerifiedExample
              ( SrcSpanInfo
                  { srcInfoSpan =
@@ -100,11 +85,6 @@ Module
           , " | more stuff\n\n"
           )
       , CodeBlockComment
-          SrcSpanInfo
-            { srcInfoSpan =
-                SrcSpan "test/assets/UnverifiedExamples.hs" 20 1 25 21
-            , srcInfoPoints = []
-            }
           (VerifiedExample
              ( SrcSpanInfo
                  { srcInfoSpan =

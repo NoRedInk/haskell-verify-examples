@@ -33,10 +33,6 @@ Module
           , " hello world\n\n"
           )
       , CodeBlockComment
-          SrcSpanInfo
-            { srcInfoSpan = SrcSpan "test/assets/Simple.hs" 9 1 10 11
-            , srcInfoPoints = []
-            }
           (VerifiedExample
              ( SrcSpanInfo
                  { srcInfoSpan = SrcSpan "test/assets/Simple.hs" 9 1 10 11
@@ -52,10 +48,6 @@ Module
           , ""
           )
       , CodeBlockComment
-          SrcSpanInfo
-            { srcInfoSpan = SrcSpan "test/assets/Simple.hs" 12 1 13 11
-            , srcInfoPoints = []
-            }
           (VerifiedExample
              ( SrcSpanInfo
                  { srcInfoSpan = SrcSpan "test/assets/Simple.hs" 12 1 13 11

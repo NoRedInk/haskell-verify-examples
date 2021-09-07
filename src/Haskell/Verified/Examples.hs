@@ -42,7 +42,7 @@ data ModuleInfo = ModuleInfo
 
 data Comment
   = PlainTextComment (LHE.SrcLoc.SrcSpanInfo, Text)
-  | CodeBlockComment LHE.SrcLoc.SrcSpanInfo Example
+  | CodeBlockComment Example
   deriving (Show, Eq)
 
 data Example
@@ -162,7 +162,7 @@ examples =
     ( \c ->
         case c of
           PlainTextComment _ -> Nothing
-          CodeBlockComment _ example -> Just example
+          CodeBlockComment example -> Just example
     )
 
 toModule ::
@@ -196,14 +196,13 @@ toComments cs =
     |> mergeComments []
     |> List.map
       ( \(ct, LHE.Comments.Comment _ srcSpan val) ->
-          let val_ = Text.fromList val
-           in case ct of
-                CodeBlock ->
-                  let srcSpanInfo = LHE.SrcLoc.noInfoSpan srcSpan
-                   in CodeBlockComment
-                        srcSpanInfo
-                        (toExample srcSpanInfo val_)
-                PlainText -> PlainTextComment (LHE.SrcLoc.noInfoSpan srcSpan, val_)
+          case ct of
+            CodeBlock ->
+              toExample
+                (LHE.SrcLoc.noInfoSpan srcSpan)
+                (Text.fromList val)
+                |> CodeBlockComment
+            PlainText -> PlainTextComment (LHE.SrcLoc.noInfoSpan srcSpan, Text.fromList val)
       )
 
 data CommentType = CodeBlock | PlainText
