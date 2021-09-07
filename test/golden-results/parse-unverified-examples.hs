@@ -1,27 +1,30 @@
 ModuleWithExamples
-  { moduleName = Just "Foo"
-  , moduleSource =
-      SrcSpanInfo
-        { srcInfoSpan =
-            SrcSpan "test/assets/UnverifiedExamples.hs" 1 1 26 1
-        , srcInfoPoints =
-            [ SrcSpan "test/assets/UnverifiedExamples.hs" 1 1 1 1
-            , SrcSpan "test/assets/UnverifiedExamples.hs" 3 1 3 1
-            , SrcSpan "test/assets/UnverifiedExamples.hs" 3 1 3 1
-            , SrcSpan "test/assets/UnverifiedExamples.hs" 5 1 5 1
-            , SrcSpan "test/assets/UnverifiedExamples.hs" 16 1 16 1
-            , SrcSpan "test/assets/UnverifiedExamples.hs" 26 1 26 1
-            , SrcSpan "test/assets/UnverifiedExamples.hs" 26 1 26 1
+  { moduleInfo =
+      ModuleInfo
+        { moduleName = Just "Foo"
+        , moduleSource =
+            SrcSpanInfo
+              { srcInfoSpan =
+                  SrcSpan "test/assets/UnverifiedExamples.hs" 1 1 26 1
+              , srcInfoPoints =
+                  [ SrcSpan "test/assets/UnverifiedExamples.hs" 1 1 1 1
+                  , SrcSpan "test/assets/UnverifiedExamples.hs" 3 1 3 1
+                  , SrcSpan "test/assets/UnverifiedExamples.hs" 3 1 3 1
+                  , SrcSpan "test/assets/UnverifiedExamples.hs" 5 1 5 1
+                  , SrcSpan "test/assets/UnverifiedExamples.hs" 16 1 16 1
+                  , SrcSpan "test/assets/UnverifiedExamples.hs" 26 1 26 1
+                  , SrcSpan "test/assets/UnverifiedExamples.hs" 26 1 26 1
+                  ]
+              }
+        , languageExtensions = [ "NoImplicitPrelude" ]
+        , imports =
+            [ ModuleImport
+                { modName = "NriPrelude"
+                , modQual = NotQualified
+                , modImp = NoImportList
+                }
             ]
         }
-  , languageExtensions = [ "NoImplicitPrelude" ]
-  , imports =
-      [ ModuleImport
-          { modName = "NriPrelude"
-          , modQual = NotQualified
-          , modImp = NoImportList
-          }
-      ]
   , comments =
       [ Comment
           ( SrcSpanInfo

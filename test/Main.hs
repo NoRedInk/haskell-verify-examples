@@ -3,6 +3,7 @@ module Main (main) where
 import qualified Expect
 import qualified GHC.Stack as Stack
 import qualified Haskell.Verified.Examples as HVE
+import qualified Language.Haskell.Exts.SrcLoc as LHE.SrcLoc
 import qualified System.Directory as Directory
 import Test (Test, describe, test)
 import qualified Test
@@ -40,7 +41,14 @@ tests =
                 |> expectJust
             result <-
               example
-                |> HVE.verify Nothing Nothing [HVE.makeSimpleImport "NriPrelude"] []
+                |> HVE.verify
+                  Nothing
+                  HVE.ModuleInfo
+                    { HVE.moduleName = Nothing,
+                      HVE.moduleSource = LHE.SrcLoc.noSrcSpan,
+                      HVE.imports = [HVE.makeSimpleImport "NriPrelude"],
+                      HVE.languageExtensions = []
+                    }
                 |> Expect.fromIO
             result
               |> Debug.toString
@@ -51,7 +59,14 @@ tests =
                 |> expectJust
             result <-
               example
-                |> HVE.verify Nothing Nothing [HVE.makeSimpleImport "NriPrelude"] []
+                |> HVE.verify
+                  Nothing
+                  HVE.ModuleInfo
+                    { HVE.moduleName = Nothing,
+                      HVE.moduleSource = LHE.SrcLoc.noSrcSpan,
+                      HVE.imports = [HVE.makeSimpleImport "NriPrelude"],
+                      HVE.languageExtensions = []
+                    }
                 |> Expect.fromIO
             result
               |> Debug.toString
@@ -75,7 +90,17 @@ tests =
                   |> expectJust
               result <-
                 example
-                  |> HVE.verify Nothing Nothing [HVE.makeSimpleImport "List", HVE.makeSimpleImport "NriPrelude"] []
+                  |> HVE.verify
+                    Nothing
+                    HVE.ModuleInfo
+                      { HVE.moduleName = Nothing,
+                        HVE.moduleSource = LHE.SrcLoc.noSrcSpan,
+                        HVE.imports =
+                          [ HVE.makeSimpleImport "List",
+                            HVE.makeSimpleImport "NriPrelude"
+                          ],
+                        HVE.languageExtensions = []
+                      }
                   |> Expect.fromIO
               result
                 |> Debug.toString
@@ -98,7 +123,17 @@ tests =
                 |> expectJust
             result <-
               example
-                |> HVE.verify Nothing Nothing [HVE.makeSimpleImport "List", HVE.makeSimpleImport "NriPrelude"] []
+                |> HVE.verify
+                  Nothing
+                  HVE.ModuleInfo
+                    { HVE.moduleName = Nothing,
+                      HVE.moduleSource = LHE.SrcLoc.noSrcSpan,
+                      HVE.imports =
+                        [ HVE.makeSimpleImport "List",
+                          HVE.makeSimpleImport "NriPrelude"
+                        ],
+                      HVE.languageExtensions = []
+                    }
                 |> Expect.fromIO
             result
               |> Debug.toString
@@ -121,7 +156,7 @@ tests =
                       result <-
                         parsed
                           |> HVE.examples
-                          |> Prelude.traverse (HVE.verify (Just modulePath) (HVE.moduleName parsed) (HVE.imports parsed) (HVE.languageExtensions parsed))
+                          |> Prelude.traverse (HVE.verify (Just modulePath) (HVE.moduleInfo parsed))
                           |> Expect.fromIO
                       Expect.fromResult
                         ( Ok
