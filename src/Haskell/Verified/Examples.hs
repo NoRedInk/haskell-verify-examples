@@ -132,20 +132,20 @@ eval modulePath moduleName imports extensions s = do
         err ->
           let _ = Debug.log "err" err
            in Debug.todo "TODO cradle failure"
+  let componentOptions = case maybeFlags of 
+        Nothing -> []
+        Just flags -> List.map Text.fromList <| HIE.Bios.Types.componentOptions flags
+
   let interpreter = case maybeFlags of
         Nothing -> Hint.runInterpreter
-        Just flags -> \x ->
-          Hint.Unsafe.unsafeRunInterpreterWithArgs
-            ( HIE.Bios.Types.componentOptions flags
-                |> getPackageDbs []
-            )
-            x
+        Just flags -> Hint.Unsafe.unsafeRunInterpreterWithArgs <| List.map Text.toList <| getPackageDbs componentOptions
   interpreter <| do
     preload <- Hint.lift preloadPaths
 
     -- TODO: Throw nice "unrecognized extension" error instead of ignoring here
     let langs = List.filterMap (\ex -> Text.Read.readMaybe <| Text.toList ex) extensions
-    Hint.set [Hint.languageExtensions Hint.:= langs]
+    let searchPaths = List.map Text.toList <| getSearchPaths componentOptions
+    Hint.set [Hint.languageExtensions Hint.:= langs, Hint.searchPath Hint.:= searchPaths]
 
     Hint.loadModules
       ( case modulePath of
@@ -167,10 +167,12 @@ eval modulePath moduleName imports extensions s = do
     Hint.setImportsF (exampleImports ++ imports)
     Hint.interpret (Text.toList s) (Hint.as :: Verified)
 
-getPackageDbs :: List Prelude.String -> List Prelude.String -> List Prelude.String
-getPackageDbs acc [] = List.reverse acc
-getPackageDbs acc ("-package-db" : x : rest) = getPackageDbs (x : "-package-db" : acc) rest
-getPackageDbs acc (_ : rest) = getPackageDbs acc rest
+
+getSearchPaths :: List Text -> List Text
+getSearchPaths = List.filterMap (\t -> if Text.startsWith "-i" t then Just <| Text.dropLeft 2 t else Nothing)
+
+getPackageDbs :: List Text -> List Text
+getPackageDbs options = List.concat [[l, r]| (l, r) <- Prelude.zip options (List.drop 1 options), l == "-package-db" ]
 
 exampleFromText :: Text -> Example
 exampleFromText val =
