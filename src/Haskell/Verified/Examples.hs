@@ -143,7 +143,7 @@ eval modulePath moduleName imports extensions s = do
     preload <- Hint.lift preloadPaths
 
     -- TODO: Throw nice "unrecognized extension" error instead of ignoring here
-    let langs = List.filterMap (\ex -> Text.Read.readMaybe <| Text.toList ex) extensions
+    let langs = List.filterMap (\ex -> Text.Read.readMaybe <| Text.toList ex) (getDefaultLanguageExtensions componentOptions ++ extensions)
     let searchPaths = List.map Text.toList <| getSearchPaths componentOptions
     Hint.set [Hint.languageExtensions Hint.:= langs, Hint.searchPath Hint.:= searchPaths]
 
@@ -167,9 +167,16 @@ eval modulePath moduleName imports extensions s = do
     Hint.setImportsF (exampleImports ++ imports)
     Hint.interpret (Text.toList s) (Hint.as :: Verified)
 
+trimPrefix :: Text -> Text -> Maybe Text
+trimPrefix prefix text
+  | Text.startsWith prefix text = Just <| Text.dropLeft (Text.length prefix) text
+  | Prelude.otherwise = Nothing
 
 getSearchPaths :: List Text -> List Text
-getSearchPaths = List.filterMap (\t -> if Text.startsWith "-i" t then Just <| Text.dropLeft 2 t else Nothing)
+getSearchPaths = List.filterMap <| trimPrefix "-i"
+
+getDefaultLanguageExtensions :: List Text -> List Text
+getDefaultLanguageExtensions = List.filterMap <| trimPrefix "-X"
 
 getPackageDbs :: List Text -> List Text
 getPackageDbs options = List.concat [[l, r]| (l, r) <- Prelude.zip options (List.drop 1 options), l == "-package-db" ]
