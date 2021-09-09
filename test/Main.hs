@@ -40,12 +40,7 @@ tests =
               example
                 |> HVE.verify
                   Nothing
-                  HVE.ModuleInfo
-                    { HVE.moduleName = Nothing,
-                      HVE.moduleSource = LHE.SrcLoc.noSrcSpan,
-                      HVE.imports = [HVE.makeSimpleImport "NriPrelude"],
-                      HVE.languageExtensions = []
-                    }
+                  (HVE.shimModuleWithImports ["NriPrelude"])
                 |> Expect.fromIO
             result
               |> Debug.toString
@@ -56,12 +51,7 @@ tests =
               example
                 |> HVE.verify
                   Nothing
-                  HVE.ModuleInfo
-                    { HVE.moduleName = Nothing,
-                      HVE.moduleSource = LHE.SrcLoc.noSrcSpan,
-                      HVE.imports = [HVE.makeSimpleImport "NriPrelude"],
-                      HVE.languageExtensions = []
-                    }
+                  (HVE.shimModuleWithImports ["NriPrelude"])
                 |> Expect.fromIO
             result
               |> Debug.toString
@@ -86,15 +76,7 @@ tests =
                 example
                   |> HVE.verify
                     Nothing
-                    HVE.ModuleInfo
-                      { HVE.moduleName = Nothing,
-                        HVE.moduleSource = LHE.SrcLoc.noSrcSpan,
-                        HVE.imports =
-                          [ HVE.makeSimpleImport "List",
-                            HVE.makeSimpleImport "NriPrelude"
-                          ],
-                        HVE.languageExtensions = []
-                      }
+                    (HVE.shimModuleWithImports ["List", "NriPrelude"])
                   |> Expect.fromIO
               result
                 |> Debug.toString
@@ -118,15 +100,7 @@ tests =
               example
                 |> HVE.verify
                   Nothing
-                  HVE.ModuleInfo
-                    { HVE.moduleName = Nothing,
-                      HVE.moduleSource = LHE.SrcLoc.noSrcSpan,
-                      HVE.imports =
-                        [ HVE.makeSimpleImport "List",
-                          HVE.makeSimpleImport "NriPrelude"
-                        ],
-                      HVE.languageExtensions = []
-                    }
+                  (HVE.shimModuleWithImports ["List", "NriPrelude"])
                 |> Expect.fromIO
             result
               |> Debug.toString

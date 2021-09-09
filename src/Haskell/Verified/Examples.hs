@@ -1,5 +1,6 @@
 module Haskell.Verified.Examples
   ( parse,
+    parseWithImplicitCradle,
     Module (..),
     ModuleInfo (..),
     Example (..),
@@ -8,7 +9,7 @@ module Haskell.Verified.Examples
     Comment (..),
     verify,
     pretty,
-    makeSimpleImport,
+    shimModuleWithImports,
   )
 where
 
@@ -41,7 +42,9 @@ data ModuleInfo = ModuleInfo
   { moduleName :: Maybe Text, -- Headless modules might not have a name
     moduleSource :: LHE.SrcSpanInfo,
     languageExtensions :: List Text,
-    imports :: List Hint.ModuleImport
+    imports :: List Hint.ModuleImport,
+    importPaths :: List Text,
+    packageDbs :: List Text
   }
   deriving (Show)
 
@@ -60,10 +63,10 @@ data Example
 -- And obviously need to parse it.
 --
 verify :: Maybe Prelude.FilePath -> ModuleInfo -> Example -> Prelude.IO (Result Text Verified)
-verify modulePath ModuleInfo {moduleName, imports, languageExtensions} example =
+verify modulePath modInfo example =
   case example of
     VerifiedExample (_, code) -> do
-      result <- eval modulePath moduleName imports languageExtensions code
+      result <- eval modulePath modInfo code
       case result of
         Prelude.Left err ->
           let _ = Debug.log "interpret error" err
@@ -83,6 +86,16 @@ preloadPaths = Prelude.traverse DataPath.getDataFileName paths
       [ "src/Haskell/Verified/Examples/RunTime.hs",
         "src/Haskell/Verified/Examples/Verified.hs"
       ]
+
+shimModuleWithImports :: List Text -> ModuleInfo
+shimModuleWithImports imports = ModuleInfo 
+  { moduleName = Nothing
+  , moduleSource = LHE.SrcLoc.noSrcSpan
+  , languageExtensions = []
+  , imports = List.map makeSimpleImport imports
+  , importPaths = []
+  , packageDbs = []
+  }
 
 makeSimpleImport :: Text -> Hint.ModuleImport
 makeSimpleImport name = Hint.ModuleImport (Text.toList name) Hint.NotQualified Hint.NoImportList
@@ -120,31 +133,18 @@ makeImport importDecl =
     importToString (LHE.Syntax.IThingAll _ n) = getName n ++ "(..)"
     importToString (LHE.Syntax.IThingWith _ n ns) = getName n ++ "(" ++ (List.concat <| List.intersperse "," (List.map getCName ns)) ++ ")"
 
-eval :: Maybe Prelude.FilePath -> Maybe Text -> List Hint.ModuleImport -> List Text -> Text -> Prelude.IO (Prelude.Either Hint.InterpreterError Verified)
-eval modulePath moduleName imports extensions s = do
-  maybeFlags <- case modulePath of
-    Nothing -> Prelude.pure Nothing
-    Just path -> do
-      cradle <- HIE.Bios.Cradle.loadImplicitCradle path
-      cradleResult <- HIE.Bios.Flags.getCompilerOptions path cradle
-      case cradleResult of
-        HIE.Bios.Types.CradleSuccess r -> Prelude.pure (Just r)
-        err ->
-          let _ = Debug.log "err" err
-           in Debug.todo "TODO cradle failure"
-  let componentOptions = case maybeFlags of
-        Nothing -> []
-        Just flags -> List.map Text.fromList <| HIE.Bios.Types.componentOptions flags
+eval :: Maybe Prelude.FilePath -> ModuleInfo -> Text -> Prelude.IO (Prelude.Either Hint.InterpreterError Verified)
+eval modulePath moduleInfo s = do
+  let interpreter = case packageDbs moduleInfo of
+        [] -> Hint.runInterpreter
+        _ -> Hint.Unsafe.unsafeRunInterpreterWithArgs <| List.map Text.toList <| packageDbs moduleInfo
 
-  let interpreter = case maybeFlags of
-        Nothing -> Hint.runInterpreter
-        Just flags -> Hint.Unsafe.unsafeRunInterpreterWithArgs <| List.map Text.toList <| getPackageDbs componentOptions
   interpreter <| do
     preload <- Hint.lift preloadPaths
 
     -- TODO: Throw nice "unrecognized extension" error instead of ignoring here
-    let langs = List.filterMap (\ex -> Text.Read.readMaybe <| Text.toList ex) (getDefaultLanguageExtensions componentOptions ++ extensions)
-    let searchPaths = List.map Text.toList <| getSearchPaths componentOptions
+    let langs = List.filterMap (\ex -> Text.Read.readMaybe <| Text.toList ex) (languageExtensions moduleInfo)
+    let searchPaths = List.map Text.toList <| importPaths moduleInfo
     Hint.set [Hint.languageExtensions Hint.:= langs, Hint.searchPath Hint.:= searchPaths]
 
     Hint.loadModules
@@ -153,7 +153,7 @@ eval modulePath moduleName imports extensions s = do
           Nothing -> preload
       )
 
-    case moduleName of
+    case moduleName moduleInfo of
       Just name -> Hint.setTopLevelModules [Text.toList name]
       Nothing -> Prelude.return ()
 
@@ -164,7 +164,7 @@ eval modulePath moduleName imports extensions s = do
               "Haskell.Verified.Examples.Verified"
             ]
 
-    Hint.setImportsF (exampleImports ++ imports)
+    Hint.setImportsF (exampleImports ++ imports moduleInfo)
     Hint.interpret (Text.toList s) (Hint.as :: Verified)
 
 trimPrefix :: Text -> Text -> Maybe Text
@@ -193,6 +193,34 @@ parse path = do
     LHE.Parser.ParseFailed x msg ->
       Debug.todo (Debug.toString x ++ Debug.toString msg)
 
+-- Parses the file for imports / extensions / comments, but also will attempt to find the cradle for project default extensions and module directories
+parseWithImplicitCradle :: Prelude.FilePath -> Prelude.IO Module
+parseWithImplicitCradle path = do
+  mod <- parse path
+   
+   -- Attempt to load the cradle
+  cradle <- HIE.Bios.Cradle.loadImplicitCradle path
+  cradleResult <- HIE.Bios.Flags.getCompilerOptions path cradle
+
+  case cradleResult of
+    HIE.Bios.Types.CradleSuccess componentOptions -> do
+      let opts = List.map Text.fromList <| HIE.Bios.Types.componentOptions componentOptions
+      let searchPaths = getSearchPaths opts
+      let packageDbs = getPackageDbs opts
+      let defaultExtensions = getDefaultLanguageExtensions opts
+
+      let modInfo = moduleInfo mod
+
+      let exModInfo = modInfo { languageExtensions = defaultExtensions ++ languageExtensions modInfo
+                              , importPaths = searchPaths
+                              , packageDbs = packageDbs 
+                              }
+
+      Prelude.return mod { moduleInfo = exModInfo }
+    err ->
+      let _ = Debug.log "Failed to load cradle with error" err
+      in Prelude.return mod
+
 examples :: List Comment -> List Example
 examples =
   List.filterMap
@@ -220,7 +248,9 @@ toModule parsed =
                   { moduleName,
                     moduleSource,
                     languageExtensions,
-                    imports = List.map makeImport imports
+                    imports = List.map makeImport imports,
+                    importPaths = [],
+                    packageDbs = []
                   },
               comments = toComments cs
             }
