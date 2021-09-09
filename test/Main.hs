@@ -141,7 +141,6 @@ tests =
             results <-
               assets
                 |> List.map ("test/assets/" ++)
-                |> List.filter (/= "test/assets/Headless.hs")
                 |> Prelude.traverse
                   ( \modulePath -> do
                       parsed <-
