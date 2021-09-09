@@ -1,6 +1,6 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 
-module Foo where
+module Simple where
 
 import NriPrelude
 

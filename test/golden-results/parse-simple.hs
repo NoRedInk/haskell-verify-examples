@@ -1,7 +1,7 @@
 Module
   { moduleInfo =
       ModuleInfo
-        { moduleName = Just "Foo"
+        { moduleName = Just "Simple"
         , moduleSource =
             SrcSpanInfo
               { srcInfoSpan = SrcSpan "test/assets/Simple.hs" 1 1 17 1

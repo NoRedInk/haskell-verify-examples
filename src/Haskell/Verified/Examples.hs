@@ -13,6 +13,10 @@ module Haskell.Verified.Examples
 where
 
 import qualified Data.Foldable as Foldable
+import qualified HIE.Bios.Cradle
+import qualified HIE.Bios.Environment
+import qualified HIE.Bios.Flags
+import qualified HIE.Bios.Types
 import Haskell.Verified.Examples.Verified (Verified (..))
 import qualified Language.Haskell.Exts as LHE
 import qualified Language.Haskell.Exts.Comments as LHE.Comments
@@ -21,6 +25,7 @@ import qualified Language.Haskell.Exts.Parser as LHE.Parser
 import qualified Language.Haskell.Exts.SrcLoc as LHE.SrcLoc
 import qualified Language.Haskell.Exts.Syntax as LHE.Syntax
 import qualified Language.Haskell.Interpreter as Hint
+import qualified Language.Haskell.Interpreter.Unsafe as Hint.Unsafe
 import NriPrelude
 import qualified Paths_haskell_verified_examples as DataPath
 import qualified Text.Read
@@ -91,7 +96,7 @@ makeImport importDecl =
     }
   where
     getName (LHE.Syntax.Ident _ n) = n
-    getName (LHE.Syntax.Symbol _ n) = n
+    getName (LHE.Syntax.Symbol _ n) = "(" ++ n ++ ")"
     getModName (LHE.Syntax.ModuleName _ n) = n
     getCName (LHE.Syntax.VarName _ n) = getName n
     getCName (LHE.Syntax.ConName _ n) = getName n
@@ -116,13 +121,31 @@ makeImport importDecl =
     importToString (LHE.Syntax.IThingWith _ n ns) = getName n ++ "(" ++ (List.concat <| List.intersperse "," (List.map getCName ns)) ++ ")"
 
 eval :: Maybe Prelude.FilePath -> Maybe Text -> List Hint.ModuleImport -> List Text -> Text -> Prelude.IO (Prelude.Either Hint.InterpreterError Verified)
-eval modulePath moduleName imports extensions s =
-  Hint.runInterpreter <| do
+eval modulePath moduleName imports extensions s = do
+  maybeFlags <- case modulePath of
+    Nothing -> Prelude.pure Nothing
+    Just path -> do
+      cradle <- HIE.Bios.Cradle.loadImplicitCradle path
+      cradleResult <- HIE.Bios.Flags.getCompilerOptions path cradle
+      case cradleResult of
+        HIE.Bios.Types.CradleSuccess r -> Prelude.pure (Just r)
+        err ->
+          let _ = Debug.log "err" err
+           in Debug.todo "TODO cradle failure"
+  let componentOptions = case maybeFlags of
+        Nothing -> []
+        Just flags -> List.map Text.fromList <| HIE.Bios.Types.componentOptions flags
+
+  let interpreter = case maybeFlags of
+        Nothing -> Hint.runInterpreter
+        Just flags -> Hint.Unsafe.unsafeRunInterpreterWithArgs <| List.map Text.toList <| getPackageDbs componentOptions
+  interpreter <| do
     preload <- Hint.lift preloadPaths
 
     -- TODO: Throw nice "unrecognized extension" error instead of ignoring here
-    let langs = List.filterMap (\ex -> Text.Read.readMaybe <| Text.toList ex) extensions
-    Hint.set [Hint.languageExtensions Hint.:= langs]
+    let langs = List.filterMap (\ex -> Text.Read.readMaybe <| Text.toList ex) (getDefaultLanguageExtensions componentOptions ++ extensions)
+    let searchPaths = List.map Text.toList <| getSearchPaths componentOptions
+    Hint.set [Hint.languageExtensions Hint.:= langs, Hint.searchPath Hint.:= searchPaths]
 
     Hint.loadModules
       ( case modulePath of
@@ -143,6 +166,20 @@ eval modulePath moduleName imports extensions s =
 
     Hint.setImportsF (exampleImports ++ imports)
     Hint.interpret (Text.toList s) (Hint.as :: Verified)
+
+trimPrefix :: Text -> Text -> Maybe Text
+trimPrefix prefix text
+  | Text.startsWith prefix text = Just <| Text.dropLeft (Text.length prefix) text
+  | Prelude.otherwise = Nothing
+
+getSearchPaths :: List Text -> List Text
+getSearchPaths = List.filterMap <| trimPrefix "-i"
+
+getDefaultLanguageExtensions :: List Text -> List Text
+getDefaultLanguageExtensions = List.filterMap <| trimPrefix "-X"
+
+getPackageDbs :: List Text -> List Text
+getPackageDbs options = List.concat [[l, r] | (l, r) <- Prelude.zip options (List.drop 1 options), l == "-package-db"]
 
 exampleFromText :: Text -> Example
 exampleFromText val =
@@ -236,6 +273,7 @@ cleanCodeBlock (LHE.Comments.Comment t s text) =
 commentType :: LHE.Comments.Comment -> CommentType
 commentType (LHE.Comments.Comment _ _ text) =
   if Text.startsWith " > " (Text.fromList text)
+    || Text.trim (Text.fromList text) == ">"
     then CodeBlock
     else PlainText
 
