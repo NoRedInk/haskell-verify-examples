@@ -2,7 +2,9 @@
 
 module LanguageExtensions where
 
+import Prelude
+
 -- TypeApplications
--- > Prelude.id @(Maybe [Char]) test ==> (Just "a")
+-- > id @(Maybe [Char]) test ==> (Just "a")
 test :: Maybe [Char]
 test = Just "a"
