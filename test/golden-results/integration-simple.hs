@@ -37,4 +37,9 @@
 , ( "test/assets/AllVariations.hs"
   , [ Ok [] , Ok [] , Ok [] , Ok [] , Ok [] ]
   )
+, ( "test/assets/Imports.hs"
+  , [ Err
+        "WontCompile\n  [ GhcError\n      { errMsg =\n          \"/tmp/hint-417e79abc3343d6c/M216882775353538971121907647059100092774320821907.hs:2:20: error:\\n    parse error on input \\8216>>\\8217\"\n      }\n  ]"
+    ]
+  )
 ]
