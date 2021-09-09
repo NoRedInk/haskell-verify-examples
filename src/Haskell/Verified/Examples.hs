@@ -273,6 +273,7 @@ cleanCodeBlock (LHE.Comments.Comment t s text) =
 commentType :: LHE.Comments.Comment -> CommentType
 commentType (LHE.Comments.Comment _ _ text) =
   if Text.startsWith " > " (Text.fromList text)
+    || Text.trim (Text.fromList text) == ">"
     then CodeBlock
     else PlainText
 
