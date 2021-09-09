@@ -96,7 +96,7 @@ makeImport importDecl =
     }
   where
     getName (LHE.Syntax.Ident _ n) = n
-    getName (LHE.Syntax.Symbol _ n) = n
+    getName (LHE.Syntax.Symbol _ n) = "(" ++ n ++ ")"
     getModName (LHE.Syntax.ModuleName _ n) = n
     getCName (LHE.Syntax.VarName _ n) = getName n
     getCName (LHE.Syntax.ConName _ n) = getName n
@@ -132,7 +132,7 @@ eval modulePath moduleName imports extensions s = do
         err ->
           let _ = Debug.log "err" err
            in Debug.todo "TODO cradle failure"
-  let componentOptions = case maybeFlags of 
+  let componentOptions = case maybeFlags of
         Nothing -> []
         Just flags -> List.map Text.fromList <| HIE.Bios.Types.componentOptions flags
 
@@ -179,7 +179,7 @@ getDefaultLanguageExtensions :: List Text -> List Text
 getDefaultLanguageExtensions = List.filterMap <| trimPrefix "-X"
 
 getPackageDbs :: List Text -> List Text
-getPackageDbs options = List.concat [[l, r]| (l, r) <- Prelude.zip options (List.drop 1 options), l == "-package-db" ]
+getPackageDbs options = List.concat [[l, r] | (l, r) <- Prelude.zip options (List.drop 1 options), l == "-package-db"]
 
 exampleFromText :: Text -> Example
 exampleFromText val =
