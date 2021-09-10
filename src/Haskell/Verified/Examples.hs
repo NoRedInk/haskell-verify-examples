@@ -1,6 +1,6 @@
 module Haskell.Verified.Examples
   ( parse,
-    parseWithImplicitCradle,
+    tryLoadImplicitCradle,
     Module (..),
     ModuleInfo (..),
     Example (..),
@@ -194,11 +194,8 @@ parse path = do
       Debug.todo (Debug.toString x ++ Debug.toString msg)
 
 -- Parses the file for imports / extensions / comments, but also will attempt to find the cradle for project default extensions and module directories
-parseWithImplicitCradle :: Prelude.FilePath -> Prelude.IO Module
-parseWithImplicitCradle path = do
-  mod <- parse path
-   
-   -- Attempt to load the cradle
+tryLoadImplicitCradle :: Prelude.FilePath -> Module -> Prelude.IO Module
+tryLoadImplicitCradle path mod = do
   cradle <- HIE.Bios.Cradle.loadImplicitCradle path
   cradleResult <- HIE.Bios.Flags.getCompilerOptions path cradle
 
