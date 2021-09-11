@@ -21,7 +21,7 @@ main = do
     files
       |> Prelude.traverse
         ( \modulePath -> do
-            parsed <- HVE.parse modulePath
+            parsed <- HVE.parse modulePath >>= HVE.tryLoadImplicitCradle modulePath
             result <-
               parsed
                 |> HVE.comments

@@ -23,6 +23,8 @@ Module
                 , modImp = NoImportList
                 }
             ]
+        , importPaths = []
+        , packageDbs = []
         }
   , comments =
       [ PlainTextComment

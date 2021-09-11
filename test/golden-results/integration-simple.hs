@@ -37,5 +37,6 @@
 , ( "test/assets/AllVariations.hs"
   , [ Ok [] , Ok [] , Ok [] , Ok [] , Ok [] ]
   )
+, ( "test/assets/Headless.hs" , [ Ok [] ] )
 , ( "test/assets/Imports.hs" , [ Ok [] , Ok [] , Ok [] ] )
 ]
