@@ -8,16 +8,22 @@ module Haskell.Verified.Examples
     exampleFromText,
     Comment (..),
     verify,
-    pretty,
+    verifyExample,
+    ExampleResult (..),
+    Reporter (..),
+    report,
     shimModuleWithImports,
   )
 where
 
+import qualified Control.Concurrent.Async as Async
 import qualified Data.Foldable as Foldable
 import qualified HIE.Bios.Cradle
 import qualified HIE.Bios.Environment
 import qualified HIE.Bios.Flags
 import qualified HIE.Bios.Types
+import Haskell.Verified.Examples.Internal
+import qualified Haskell.Verified.Examples.Reporter.Stdout as Reporter.Stdout
 import Haskell.Verified.Examples.Verified (Verified (..))
 import qualified Language.Haskell.Exts as LHE
 import qualified Language.Haskell.Exts.Comments as LHE.Comments
@@ -29,54 +35,35 @@ import qualified Language.Haskell.Interpreter as Hint
 import qualified Language.Haskell.Interpreter.Unsafe as Hint.Unsafe
 import NriPrelude
 import qualified Paths_haskell_verified_examples as DataPath
+import qualified System.IO
 import qualified Text.Read
 import qualified Prelude
-
-data Module = Module
-  { moduleInfo :: ModuleInfo,
-    comments :: List Comment
-  }
-  deriving (Show)
-
-data ModuleInfo = ModuleInfo
-  { moduleName :: Maybe Text, -- Headless modules might not have a name
-    moduleSource :: LHE.SrcSpanInfo,
-    languageExtensions :: List Text,
-    imports :: List Hint.ModuleImport,
-    importPaths :: List Text,
-    packageDbs :: List Text
-  }
-  deriving (Show)
-
-data Comment
-  = PlainTextComment (LHE.SrcLoc.SrcSpanInfo, Text)
-  | CodeBlockComment Example
-  deriving (Show, Eq)
-
-data Example
-  = VerifiedExample (LHE.SrcLoc.SrcSpanInfo, Text)
-  | UnverifiedExample (LHE.SrcLoc.SrcSpanInfo, Text)
-  deriving (Show, Eq)
 
 -- TODO imports need to support qualified and stuff. This is just a hack to see how things work so far.
 -- We can use setImportsQ.
 -- And obviously need to parse it.
 --
-verify :: Maybe Prelude.FilePath -> ModuleInfo -> Example -> Prelude.IO (Result Text Verified)
-verify modulePath modInfo example =
+verify :: Maybe Prelude.FilePath -> Module -> Prelude.IO (List ExampleResult)
+verify modulePath mod =
+  mod
+    |> comments
+    |> examples
+    |> Prelude.traverse (verifyExample modulePath (moduleInfo mod))
+
+verifyExample :: Maybe Prelude.FilePath -> ModuleInfo -> Example -> Prelude.IO ExampleResult
+verifyExample modulePath modInfo example =
   case example of
     VerifiedExample (_, code) -> do
       result <- eval modulePath modInfo code
       case result of
         Prelude.Left err ->
-          let _ = Debug.log "interpret error" err
-           in Prelude.pure (Err (Debug.toString err))
-        Prelude.Right execResult -> Prelude.pure (Ok execResult)
+          Prelude.pure (ExampleVerifyFailed example err)
+        Prelude.Right execResult ->
+          ExampleVerifySuccess example execResult
+            |> Prelude.pure
     UnverifiedExample (_, code) ->
-      code
-        |> Text.toList
-        |> NoExampleResult
-        |> Ok
+      NoExampleResult
+        |> ExampleVerifySuccess example
         |> Prelude.pure
 
 preloadPaths :: Prelude.IO (List Prelude.FilePath)
@@ -88,14 +75,15 @@ preloadPaths = Prelude.traverse DataPath.getDataFileName paths
       ]
 
 shimModuleWithImports :: List Text -> ModuleInfo
-shimModuleWithImports imports = ModuleInfo 
-  { moduleName = Nothing
-  , moduleSource = LHE.SrcLoc.noSrcSpan
-  , languageExtensions = []
-  , imports = List.map makeSimpleImport imports
-  , importPaths = []
-  , packageDbs = []
-  }
+shimModuleWithImports imports =
+  ModuleInfo
+    { moduleName = Nothing,
+      moduleSource = LHE.SrcLoc.noSrcSpan,
+      languageExtensions = [],
+      imports = List.map makeSimpleImport imports,
+      importPaths = [],
+      packageDbs = []
+    }
 
 makeSimpleImport :: Text -> Hint.ModuleImport
 makeSimpleImport name = Hint.ModuleImport (Text.toList name) Hint.NotQualified Hint.NoImportList
@@ -208,15 +196,17 @@ tryLoadImplicitCradle path mod = do
 
       let modInfo = moduleInfo mod
 
-      let exModInfo = modInfo { languageExtensions = defaultExtensions ++ languageExtensions modInfo
-                              , importPaths = searchPaths
-                              , packageDbs = packageDbs 
-                              }
+      let exModInfo =
+            modInfo
+              { languageExtensions = defaultExtensions ++ languageExtensions modInfo,
+                importPaths = searchPaths,
+                packageDbs = packageDbs
+              }
 
-      Prelude.return mod { moduleInfo = exModInfo }
+      Prelude.return mod {moduleInfo = exModInfo}
     err ->
       let _ = Debug.log "Failed to load cradle with error" err
-      in Prelude.return mod
+       in Prelude.return mod
 
 examples :: List Comment -> List Example
 examples =
@@ -330,21 +320,18 @@ parseFileWithComments ::
 parseFileWithComments path =
   LHE.parseFileWithComments (LHE.defaultParseMode {LHE.parseFilename = path, LHE.extensions = [LHE.EnableExtension LHE.CPP]}) path
 
-pretty :: Verified -> List Text
-pretty verified =
-  case verified of
-    Verified -> []
-    Unverified expected actual ->
-      [ "The example was incorrect and couldn't be verified.",
-        "",
-        "We expected:",
-        Text.fromList expected,
-        "",
-        "but received",
-        Text.fromList actual
-      ]
-    NoExampleResult example ->
-      [ "No example result was provided. For example:",
-        "",
-        Text.fromList example
-      ]
+data Reporter
+  = Stdout
+  | -- | TODO
+    Junit
+  | LogFile
+  deriving (Eq)
+
+report :: List Reporter -> List (ModuleInfo, List ExampleResult) -> Prelude.IO ()
+report reporters results =
+  [ if List.member Stdout reporters
+      then Just (Reporter.Stdout.report System.IO.stdout results)
+      else Nothing
+  ]
+    |> List.filterMap identity
+    |> Async.mapConcurrently_ identity

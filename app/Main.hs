@@ -22,19 +22,10 @@ main = do
       |> Prelude.traverse
         ( \modulePath -> do
             parsed <- HVE.parse modulePath >>= HVE.tryLoadImplicitCradle modulePath
-            result <-
-              parsed
-                |> HVE.comments
-                |> HVE.examples
-                |> Prelude.traverse
-                  ( HVE.verify
-                      (Just modulePath)
-                      (HVE.moduleInfo parsed)
-                  )
-            Prelude.pure (modulePath, result)
+            results <- HVE.verify (Just modulePath) parsed
+            Prelude.pure (HVE.moduleInfo parsed, results)
         )
-  let _ = Debug.log "results" results
-  Prelude.pure ()
+  HVE.report [HVE.Stdout] results
 
 noRCS :: Find.RecursionPredicate
 noRCS =
