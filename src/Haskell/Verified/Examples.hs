@@ -43,18 +43,18 @@ import qualified Prelude
 -- We can use setImportsQ.
 -- And obviously need to parse it.
 --
-verify :: Maybe Prelude.FilePath -> Module -> Prelude.IO (List ExampleResult)
-verify modulePath mod =
+verify :: Module -> Prelude.IO (List ExampleResult)
+verify mod =
   mod
     |> comments
     |> examples
-    |> Prelude.traverse (verifyExample modulePath (moduleInfo mod))
+    |> Prelude.traverse (verifyExample (moduleInfo mod))
 
-verifyExample :: Maybe Prelude.FilePath -> ModuleInfo -> Example -> Prelude.IO ExampleResult
-verifyExample modulePath modInfo example =
+verifyExample :: ModuleInfo -> Example -> Prelude.IO ExampleResult
+verifyExample modInfo example =
   case example of
     VerifiedExample (_, code) -> do
-      result <- eval modulePath modInfo code
+      result <- eval modInfo code
       case result of
         Prelude.Left err ->
           Prelude.pure (ExampleVerifyFailed example err)
@@ -121,8 +121,12 @@ makeImport importDecl =
     importToString (LHE.Syntax.IThingAll _ n) = getName n ++ "(..)"
     importToString (LHE.Syntax.IThingWith _ n ns) = getName n ++ "(" ++ (List.concat <| List.intersperse "," (List.map getCName ns)) ++ ")"
 
-eval :: Maybe Prelude.FilePath -> ModuleInfo -> Text -> Prelude.IO (Prelude.Either Hint.InterpreterError Verified)
-eval modulePath moduleInfo s = do
+eval :: ModuleInfo -> Text -> Prelude.IO (Prelude.Either Hint.InterpreterError Verified)
+eval moduleInfo s = do
+  let modulePath =
+        moduleSource moduleInfo
+          |> LHE.SrcLoc.srcInfoSpan
+          |> LHE.SrcLoc.srcSpanFilename
   let interpreter = case packageDbs moduleInfo of
         [] -> Hint.runInterpreter
         _ -> Hint.Unsafe.unsafeRunInterpreterWithArgs <| List.map Text.toList <| packageDbs moduleInfo
@@ -136,9 +140,9 @@ eval modulePath moduleInfo s = do
     Hint.set [Hint.languageExtensions Hint.:= langs, Hint.searchPath Hint.:= searchPaths]
 
     Hint.loadModules
-      ( case modulePath of
-          Just path -> path : preload
-          Nothing -> preload
+      ( if modulePath == ""
+          then preload
+          else modulePath : preload
       )
 
     case moduleName moduleInfo of

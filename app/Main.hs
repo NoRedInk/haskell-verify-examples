@@ -22,7 +22,7 @@ main = do
       |> Prelude.traverse
         ( \modulePath -> do
             parsed <- HVE.parse modulePath >>= HVE.tryLoadImplicitCradle modulePath
-            results <- HVE.verify (Just modulePath) parsed
+            results <- HVE.verify parsed
             Prelude.pure (HVE.moduleInfo parsed, results)
         )
   HVE.report [HVE.Stdout] results

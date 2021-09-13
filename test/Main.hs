@@ -42,7 +42,6 @@ tests =
             result <-
               example
                 |> HVE.verifyExample
-                  Nothing
                   (HVE.shimModuleWithImports ["NriPrelude"])
                 |> Expect.fromIO
             result
@@ -53,7 +52,6 @@ tests =
             result <-
               example
                 |> HVE.verifyExample
-                  Nothing
                   (HVE.shimModuleWithImports ["NriPrelude"])
                 |> Expect.fromIO
             result
@@ -78,7 +76,6 @@ tests =
               result <-
                 example
                   |> HVE.verifyExample
-                    Nothing
                     (HVE.shimModuleWithImports ["List", "NriPrelude"])
                   |> Expect.fromIO
               result
@@ -102,7 +99,6 @@ tests =
             result <-
               example
                 |> HVE.verifyExample
-                  Nothing
                   (HVE.shimModuleWithImports ["List", "NriPrelude"])
                 |> Expect.fromIO
             result
@@ -125,7 +121,7 @@ tests =
                           |> Expect.fromIO
                       result <-
                         parsed
-                          |> HVE.verify (Just modulePath)
+                          |> HVE.verify
                           |> Expect.fromIO
                       Expect.fromResult (Ok (HVE.moduleInfo parsed, result))
                   )
