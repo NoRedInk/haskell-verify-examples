@@ -20,7 +20,7 @@ import qualified System.Directory
 import System.FilePath ((</>))
 import qualified System.IO
 import qualified Text
-import Text.Colour (chunk, faint, underline)
+import Text.Colour (Chunk, chunk, faint, underline)
 import qualified Text.Colour
 import qualified Text.Colour.Capabilities
 import qualified Text.Show.Pretty
@@ -33,19 +33,13 @@ report handle results = do
         Just Terminal.Window {Terminal.width} -> width - 4 -- indentation
         Nothing -> 80
   terminalCapabilities <- Text.Colour.Capabilities.getTerminalCapabilitiesFromHandle handle
-  perModuleResults <-
-    Prelude.traverse (renderPerModule terminalWidth) results
-      |> map
-        ( List.filterMap identity
-            >> List.intersperse [chunk "\n\n"]
-            >> List.concat
-        )
+  perModuleResults <- Prelude.traverse (augmentSrc >> map (renderPerModule terminalWidth)) results
   let summary =
         results
           |> List.concatMap Tuple.second
           |> examplesSummary
           |> renderSummary
-  (perModuleResults ++ [chunk "\n\n"] ++ summary)
+  (separateBlocks perModuleResults ++ [chunk "\n\n"] ++ summary)
     |> Text.Colour.hPutChunksWith terminalCapabilities handle
   System.IO.hFlush handle
 
@@ -56,7 +50,7 @@ data Summary = Summary
     evaluationFailed :: List Example
   }
 
-renderSummary :: Summary -> List (Text.Colour.Chunk)
+renderSummary :: Summary -> List Chunk
 renderSummary Summary {verified, unverified, noExamples, evaluationFailed} =
   List.concat
     [ [ underline
@@ -70,7 +64,7 @@ renderSummary Summary {verified, unverified, noExamples, evaluationFailed} =
       renderSummaryForType "Evaluation failed" evaluationFailed
     ]
 
-renderSummaryForType :: Text -> List Example -> List (Text.Colour.Chunk)
+renderSummaryForType :: Text -> List Example -> List Chunk
 renderSummaryForType prefix examples =
   chunk ("\n" ++ prefix ++ ": " ++ Text.fromInt (List.length examples)) :
   if List.isEmpty examples
@@ -99,43 +93,42 @@ examplesSummary =
     )
     (Summary [] [] [] [])
 
-renderPerModule :: Int -> (ModuleInfo, List ExampleResult) -> Prelude.IO (Maybe (List (Text.Colour.Chunk)))
-renderPerModule terminalWidth (modInfo, exampleResults) =
+augmentSrc :: (ModuleInfo, a) -> Prelude.IO (ModuleInfo, a, Maybe BS.ByteString)
+augmentSrc (modInfo, xs) = do
+  maybeModule <- readSrc (moduleFilePath modInfo)
+  Prelude.pure (modInfo, xs, maybeModule)
+
+renderPerModule :: Int -> (ModuleInfo, List ExampleResult, Maybe BS.ByteString) -> List Chunk
+renderPerModule terminalWidth (modInfo, exampleResults, maybeModule) =
   if examplesVerified exampleResults
-    then Prelude.pure Nothing
-    else do
-      maybeModule <- readSrc (moduleFilePath modInfo)
+    then []
+    else
       let renderedExampleResults =
             exampleResults
-              |> List.filterMap (renderExampleWithSrc terminalWidth maybeModule)
-              |> List.intersperse [chunk "\n\n"]
-              |> List.concat
-      let header =
+              |> List.map (renderExampleWithSrc terminalWidth maybeModule)
+              |> separateBlocks
+          header =
             case moduleName modInfo of
               Just name -> "Examples of module " ++ name ++ " unverified."
               Nothing -> "Examples unverified."
-      (red (chunk header) : chunk "\n" : renderedExampleResults)
-        |> Just
-        |> Prelude.pure
+       in red (chunk header) : chunk "\n" : renderedExampleResults
 
-renderExampleWithSrc :: Int -> Maybe BS.ByteString -> ExampleResult -> Maybe (List (Text.Colour.Chunk))
+renderExampleWithSrc :: Int -> Maybe BS.ByteString -> ExampleResult -> List Chunk
 renderExampleWithSrc terminalWidth contents result =
-  result
-    |> renderExample terminalWidth
-    |> Maybe.map
-      ( \res ->
-          List.concat
-            [ result
-                |> exampleFromResult
-                |> exampleSrcSpan
-                |> renderSrcSpan contents,
-              res
-            ]
-      )
+  case renderExample terminalWidth result of
+    [] -> []
+    renderedExamples ->
+      List.concat
+        [ result
+            |> exampleFromResult
+            |> exampleSrcSpan
+            |> renderSrcSpan contents,
+          renderedExamples
+        ]
 
-renderExample :: Int -> ExampleResult -> Maybe (List (Text.Colour.Chunk))
+renderExample :: Int -> ExampleResult -> List Chunk
 renderExample _ (ExampleVerifyFailed example err) =
-  Just <| case err of
+  case err of
     Hint.UnknownError unknownError ->
       [ chunk "Unknown error:\n",
         chunk <| Text.fromList unknownError
@@ -153,29 +146,28 @@ renderExample _ (ExampleVerifyFailed example err) =
       ]
 renderExample terminalWidth (ExampleVerifySuccess example verified) =
   case verified of
-    Verified -> Nothing
+    Verified -> []
     Unverified expected actual ->
       let expectedText = Text.fromList (Text.Show.Pretty.ppShow actual)
           actualText = Text.fromList (Text.Show.Pretty.ppShow expected)
           numLines text = List.length (Text.lines text)
-       in Just
-            [ chunk "The example was incorrect and couldn't be verified.",
-              chunk "\n",
-              chunk
-                <| Diff.pretty
-                  Diff.Config
-                    { Diff.separatorText = Just "==>",
-                      Diff.wrapping = Diff.Wrap (Prelude.fromIntegral terminalWidth),
-                      Diff.multilineContext =
-                        if numLines expectedText < 6 && numLines actualText < 6
-                          then Diff.FullContext
-                          else Diff.Surrounding 2 "..."
-                    }
-                  actualText
-                  expectedText
-            ]
+       in [ chunk "The example was incorrect and couldn't be verified.",
+            chunk "\n",
+            chunk
+              <| Diff.pretty
+                Diff.Config
+                  { Diff.separatorText = Just "==>",
+                    Diff.wrapping = Diff.Wrap (Prelude.fromIntegral terminalWidth),
+                    Diff.multilineContext =
+                      if numLines expectedText < 6 && numLines actualText < 6
+                        then Diff.FullContext
+                        else Diff.Surrounding 2 "..."
+                  }
+                actualText
+                expectedText
+          ]
     NoExampleResult ->
-      Just ["No expected result for example."]
+      ["No expected result for example."]
 
 readSrc :: Prelude.FilePath -> Prelude.IO (Maybe BS.ByteString)
 readSrc srcPath = do
@@ -188,7 +180,7 @@ readSrc srcPath = do
       Prelude.pure (Just contents)
     else Prelude.pure Nothing
 
-renderSrcSpan :: Maybe BS.ByteString -> LHE.SrcLoc.SrcSpan -> List Text.Colour.Chunk
+renderSrcSpan :: Maybe BS.ByteString -> LHE.SrcLoc.SrcSpan -> List Chunk
 renderSrcSpan Nothing _ = []
 renderSrcSpan (Just contents) span = do
   let startLine = Prelude.fromIntegral (LHE.SrcLoc.srcSpanStartLine span)
@@ -222,11 +214,15 @@ renderSrcSpan (Just contents) span = do
             lines'
         ]
 
-red :: Text.Colour.Chunk -> Text.Colour.Chunk
+red :: Chunk -> Chunk
 red = Text.Colour.fore Text.Colour.red
 
-green :: Text.Colour.Chunk -> Text.Colour.Chunk
+green :: Chunk -> Chunk
 green = Text.Colour.fore Text.Colour.green
 
 extraLinesOnFailure :: Int
 extraLinesOnFailure = 5
+
+separateBlocks :: List (List Chunk) -> List Chunk
+separateBlocks =
+  List.filter (not << List.isEmpty) >> List.intersperse [chunk "\n\n"] >> List.concat
