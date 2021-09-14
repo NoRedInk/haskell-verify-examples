@@ -62,6 +62,7 @@ examplesVerified = List.all exampleVerified
 exampleVerified :: ExampleResult -> Bool
 exampleVerified (ExampleVerifySuccess _ Verified) = True
 exampleVerified (ExampleVerifySuccess _ _) = False
+exampleVerified (ExampleVerifyFailed _ _) = False
 
 exampleFromResult :: ExampleResult -> Example
 exampleFromResult (ExampleVerifySuccess example _) = example
