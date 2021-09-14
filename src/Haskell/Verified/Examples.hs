@@ -39,10 +39,6 @@ import qualified System.IO
 import qualified Text.Read
 import qualified Prelude
 
--- TODO imports need to support qualified and stuff. This is just a hack to see how things work so far.
--- We can use setImportsQ.
--- And obviously need to parse it.
---
 verify :: Module -> Prelude.IO (List ExampleResult)
 verify mod =
   mod
