@@ -256,7 +256,7 @@ toComments cs =
             PlainText -> PlainTextComment (LHE.SrcLoc.noInfoSpan srcSpan, Text.fromList val)
       )
 
-data CommentType = CodeBlock | PlainText
+data CommentType = CodeBlock | PlainText | ContextBlock
   deriving (Show)
 
 mergeComments :: List (CommentType, LHE.Comments.Comment) -> List LHE.Comments.Comment -> List (CommentType, LHE.Comments.Comment)
@@ -286,10 +286,18 @@ cleanCodeBlock (LHE.Comments.Comment t s text) =
 
 commentType :: LHE.Comments.Comment -> CommentType
 commentType (LHE.Comments.Comment _ _ text) =
-  if Text.startsWith " > " (Text.fromList text)
-    || Text.trim (Text.fromList text) == ">"
+  if hasArrow text
     then CodeBlock
-    else PlainText
+    else
+      if hasAt text
+        then ContextBlock
+        else PlainText
+
+hasAt text = Text.trim (Text.fromList text) == "@"
+
+hasArrow text =
+  Text.startsWith " > " (Text.fromList text)
+    || Text.trim (Text.fromList text) == ">"
 
 concatComment :: LHE.Comments.Comment -> LHE.Comments.Comment -> LHE.Comments.Comment
 concatComment (LHE.Comments.Comment _ srcSpanA a) (LHE.Comments.Comment _ srcSpanB b) =
