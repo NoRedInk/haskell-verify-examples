@@ -1,9 +1,12 @@
 module Main (main) where
 
+import qualified Data.Text.IO
 import qualified Expect
 import qualified Haskell.Verified.Examples as HVE
+import qualified Haskell.Verified.Examples.Reporter.Stdout as Reporter.Stdout
 import qualified Language.Haskell.Exts.SrcLoc as LHE.SrcLoc
 import qualified System.Directory as Directory
+import qualified System.IO
 import Test (Test, describe, test)
 import qualified Test
 import qualified Prelude
@@ -33,29 +36,27 @@ tests =
               |> Expect.equalToContentsOf "test/golden-results/parse-unverified-examples.hs"
         ],
       describe
-        "verify"
+        "verifyExample"
         [ test "verfies an example when it succeeds" <| \() -> do
             let example = HVE.exampleFromText "1 + 1 ==> 2"
             result <-
               example
-                |> HVE.verify
-                  Nothing
+                |> HVE.verifyExample
                   (HVE.shimModuleWithImports ["NriPrelude"])
                 |> Expect.fromIO
             result
               |> Debug.toString
-              |> Expect.equalToContentsOf "test/golden-results/verify-verified.hs",
+              |> Expect.equalToContentsOf "test/golden-results/verifyExample-verified.hs",
           test "verfies an example when it fails" <| \() -> do
             let example = HVE.exampleFromText "1 + 1 ==> 3"
             result <-
               example
-                |> HVE.verify
-                  Nothing
+                |> HVE.verifyExample
                   (HVE.shimModuleWithImports ["NriPrelude"])
                 |> Expect.fromIO
             result
               |> Debug.toString
-              |> Expect.equalToContentsOf "test/golden-results/verify-unverified.hs",
+              |> Expect.equalToContentsOf "test/golden-results/verifyExample-unverified.hs",
           test "verfies multiline example (succeeds)" <| \() ->
             do
               let example =
@@ -74,13 +75,12 @@ tests =
                       |> HVE.exampleFromText
               result <-
                 example
-                  |> HVE.verify
-                    Nothing
+                  |> HVE.verifyExample
                     (HVE.shimModuleWithImports ["List", "NriPrelude"])
                   |> Expect.fromIO
               result
                 |> Debug.toString
-                |> Expect.equalToContentsOf "test/golden-results/verify-multiline-verified.hs",
+                |> Expect.equalToContentsOf "test/golden-results/verifyExample-multiline-verified.hs",
           test "verfies multiline example (fails)" <| \() -> do
             let example =
                   [ "[ 1",
@@ -98,13 +98,12 @@ tests =
                     |> HVE.exampleFromText
             result <-
               example
-                |> HVE.verify
-                  Nothing
+                |> HVE.verifyExample
                   (HVE.shimModuleWithImports ["List", "NriPrelude"])
                 |> Expect.fromIO
             result
               |> Debug.toString
-              |> Expect.equalToContentsOf "test/golden-results/verify-multiline-unverified.hs"
+              |> Expect.equalToContentsOf "test/golden-results/verifyExample-multiline-unverified.hs"
         ],
       describe
         "Integration"
@@ -122,19 +121,24 @@ tests =
                           |> Expect.fromIO
                       result <-
                         parsed
-                          |> HVE.comments
-                          |> HVE.examples
-                          |> Prelude.traverse (HVE.verify (Just modulePath) (HVE.moduleInfo parsed))
+                          |> HVE.verify
                           |> Expect.fromIO
-                      Expect.fromResult
-                        ( Ok
-                            ( modulePath,
-                              List.map (Result.map HVE.pretty) result
-                            )
-                        )
+                      Expect.fromResult (Ok (HVE.moduleInfo parsed, result))
                   )
-            results
-              |> Debug.toString
+            contents <-
+              withTempFile (\handle -> Reporter.Stdout.report handle results)
+            contents
               |> Expect.equalToContentsOf "test/golden-results/integration-simple.hs"
         ]
     ]
+
+-- | Provide a temporary file for a test to do some work in, then return the
+-- contents of the file when the test is done with it.
+withTempFile :: (System.IO.Handle -> Prelude.IO ()) -> Expect.Expectation' Text
+withTempFile go =
+  Expect.fromIO <| do
+    (path, handle) <-
+      System.IO.openTempFile "/tmp" "nri-haskell-libraries-test-file"
+    go handle
+    System.IO.hClose handle
+    Data.Text.IO.readFile path

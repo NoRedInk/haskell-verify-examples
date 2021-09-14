@@ -5,15 +5,15 @@ Module
         , moduleSource =
             SrcSpanInfo
               { srcInfoSpan =
-                  SrcSpan "test/assets/UnverifiedExamples.hs" 1 1 26 1
+                  SrcSpan "test/assets/UnverifiedExamples.hs" 1 1 35 1
               , srcInfoPoints =
                   [ SrcSpan "test/assets/UnverifiedExamples.hs" 1 1 1 1
                   , SrcSpan "test/assets/UnverifiedExamples.hs" 3 1 3 1
                   , SrcSpan "test/assets/UnverifiedExamples.hs" 3 1 3 1
                   , SrcSpan "test/assets/UnverifiedExamples.hs" 5 1 5 1
                   , SrcSpan "test/assets/UnverifiedExamples.hs" 16 1 16 1
-                  , SrcSpan "test/assets/UnverifiedExamples.hs" 26 1 26 1
-                  , SrcSpan "test/assets/UnverifiedExamples.hs" 26 1 26 1
+                  , SrcSpan "test/assets/UnverifiedExamples.hs" 35 1 35 1
+                  , SrcSpan "test/assets/UnverifiedExamples.hs" 35 1 35 1
                   ]
               }
         , languageExtensions = [ "NoImplicitPrelude" ]
@@ -94,6 +94,23 @@ Module
                  , srcInfoPoints = []
                  }
              , "[ 1\n, 2\n, 3\n, 4\n] |> map (+ 1)\n==> [ 2, 4, 5 ]"
+             ))
+      , PlainTextComment
+          ( SrcSpanInfo
+              { srcInfoSpan =
+                  SrcSpan "test/assets/UnverifiedExamples.hs" 27 1 28 3
+              , srcInfoPoints = []
+              }
+          , " | compilation fails\n"
+          )
+      , CodeBlockComment
+          (VerifiedExample
+             ( SrcSpanInfo
+                 { srcInfoSpan =
+                     SrcSpan "test/assets/UnverifiedExamples.hs" 29 1 34 14
+                 , srcInfoPoints = []
+                 }
+             , "[ 1\n, 2\n, 3\n, 4\n] |> map (+ 1)\n==> True"
              ))
       ]
   }
