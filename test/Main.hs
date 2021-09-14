@@ -33,7 +33,14 @@ tests =
                 |> Expect.fromIO
             result
               |> Debug.toString
-              |> Expect.equalToContentsOf "test/golden-results/parse-unverified-examples.hs"
+              |> Expect.equalToContentsOf "test/golden-results/parse-unverified-examples.hs",
+          test "parses context code" <| \() -> do
+            result <-
+              HVE.parse "test/assets/WithContext.hs"
+                |> Expect.fromIO
+            result
+              |> Debug.toString
+              |> Expect.equalToContentsOf "test/golden-results/parse-with-context.hs"
         ],
       describe
         "verifyExample"

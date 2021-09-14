@@ -211,6 +211,7 @@ examples =
     ( \c ->
         case c of
           PlainTextComment _ -> Nothing
+          ContextBlockComment _ -> Nothing
           CodeBlockComment example -> Just example
     )
 
@@ -244,7 +245,7 @@ toModule parsed =
 toComments :: List LHE.Comments.Comment -> List Comment
 toComments cs =
   cs
-    |> mergeComments []
+    |> mergeComments [] False
     |> List.map
       ( \(ct, LHE.Comments.Comment _ srcSpan val) ->
           case ct of
@@ -254,29 +255,40 @@ toComments cs =
                 (Text.fromList val)
                 |> CodeBlockComment
             PlainText -> PlainTextComment (LHE.SrcLoc.noInfoSpan srcSpan, Text.fromList val)
+            ContextBlock -> ContextBlockComment (LHE.SrcLoc.noInfoSpan srcSpan, Text.fromList val)
       )
 
 data CommentType = CodeBlock | PlainText | ContextBlock
   deriving (Show)
 
-mergeComments :: List (CommentType, LHE.Comments.Comment) -> List LHE.Comments.Comment -> List (CommentType, LHE.Comments.Comment)
-mergeComments acc [] = List.reverse acc
-mergeComments [] (next : rest) =
-  mergeComments
-    [ case commentType next of
-        CodeBlock -> (CodeBlock, cleanCodeBlock next)
-        PlainText -> (PlainText, next)
-    ]
-    rest
-mergeComments (prev@(prevCT, prevComment) : acc) (next : rest) =
-  mergeComments
-    ( case (prevCT, commentType next) of
-        (CodeBlock, CodeBlock) -> (CodeBlock, concatComment prevComment (cleanCodeBlock next)) : acc
-        (PlainText, PlainText) -> (PlainText, concatComment prevComment next) : acc
-        (PlainText, CodeBlock) -> (CodeBlock, cleanCodeBlock next) : prev : acc
-        (CodeBlock, PlainText) -> (PlainText, next) : prev : acc
-    )
-    rest
+mergeComments :: List (CommentType, LHE.Comments.Comment) -> Bool -> List LHE.Comments.Comment -> List (CommentType, LHE.Comments.Comment)
+mergeComments acc _ [] = List.reverse acc
+mergeComments [] _ (next : rest) =
+  case commentType next of
+    CodeBlock -> mergeComments [(CodeBlock, cleanCodeBlock next)] False rest
+    PlainText -> mergeComments [(PlainText, next)] False rest
+    ContextBlock -> mergeComments [(ContextBlock, next)] True rest
+mergeComments ((_, prevComment) : acc) True (next : rest) =
+  case commentType next of
+    CodeBlock -> mergeComments ((ContextBlock, concatComment prevComment next) : acc) True rest
+    PlainText -> mergeComments ((ContextBlock, concatComment prevComment next) : acc) True rest
+    ContextBlock -> mergeComments ((ContextBlock, concatComment prevComment (cleanCodeBlock next)) : acc) False rest
+mergeComments (prev@(prevCT, prevComment) : acc) False (next : rest) =
+  case (prevCT, commentType next) of
+    (CodeBlock, CodeBlock) -> mergeComments ((CodeBlock, concatComment prevComment (cleanCodeBlock next)) : acc) False rest
+    (PlainText, PlainText) -> mergeComments ((PlainText, concatComment prevComment next) : acc) False rest
+    (PlainText, CodeBlock) -> mergeComments ((CodeBlock, cleanCodeBlock next) : prev : acc) False rest
+    (CodeBlock, PlainText) -> mergeComments ((PlainText, next) : prev : acc) False rest
+    (_, ContextBlock) -> mergeComments ((ContextBlock, cleanCodeBlock next) : prev : acc) True rest
+    (ContextBlock, CodeBlock) -> mergeComments ((CodeBlock, cleanCodeBlock next) : prev : acc) False rest
+    (ContextBlock, PlainText) -> mergeComments ((PlainText, next) : prev : acc) False rest
+
+-- @
+--
+--
+--
+--
+-- @
 
 cleanCodeBlock :: LHE.Comments.Comment -> LHE.Comments.Comment
 cleanCodeBlock (LHE.Comments.Comment t s text) =
