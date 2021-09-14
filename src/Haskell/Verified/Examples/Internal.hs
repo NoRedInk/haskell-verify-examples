@@ -66,3 +66,7 @@ exampleVerified (ExampleVerifySuccess _ _) = False
 exampleFromResult :: ExampleResult -> Example
 exampleFromResult (ExampleVerifySuccess example _) = example
 exampleFromResult (ExampleVerifyFailed example _) = example
+
+moduleFilePath :: ModuleInfo -> Prelude.FilePath
+moduleFilePath =
+  LHE.SrcLoc.srcSpanFilename << LHE.SrcLoc.srcInfoSpan << moduleSource

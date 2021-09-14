@@ -104,7 +104,7 @@ renderPerModule terminalWidth (modInfo, exampleResults) =
   if examplesVerified exampleResults
     then Prelude.pure Nothing
     else do
-      maybeModule <- readSrcSpan (LHE.SrcLoc.srcInfoSpan <| moduleSource modInfo)
+      maybeModule <- readSrc (moduleFilePath modInfo)
       let renderedExampleResults =
             exampleResults
               |> List.filterMap (renderExampleWithSrc terminalWidth maybeModule)
@@ -177,10 +177,10 @@ renderExample terminalWidth (ExampleVerifySuccess example verified) =
     NoExampleResult ->
       Just ["No expected result for example."]
 
-readSrcSpan :: LHE.SrcLoc.SrcSpan -> Prelude.IO (Maybe BS.ByteString)
-readSrcSpan span = do
+readSrc :: Prelude.FilePath -> Prelude.IO (Maybe BS.ByteString)
+readSrc srcPath = do
   cwd <- System.Directory.getCurrentDirectory
-  let path = cwd </> LHE.SrcLoc.srcSpanFilename span
+  let path = cwd </> srcPath
   exists <- System.Directory.doesFileExist path
   if exists
     then do

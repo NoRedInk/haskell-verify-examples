@@ -123,10 +123,7 @@ makeImport importDecl =
 
 eval :: ModuleInfo -> Text -> Prelude.IO (Prelude.Either Hint.InterpreterError Verified)
 eval moduleInfo s = do
-  let modulePath =
-        moduleSource moduleInfo
-          |> LHE.SrcLoc.srcInfoSpan
-          |> LHE.SrcLoc.srcSpanFilename
+  let modulePath = moduleFilePath moduleInfo
   let interpreter = case packageDbs moduleInfo of
         [] -> Hint.runInterpreter
         _ -> Hint.Unsafe.unsafeRunInterpreterWithArgs <| List.map Text.toList <| packageDbs moduleInfo
