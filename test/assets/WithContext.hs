@@ -8,6 +8,9 @@ import NriPrelude
 -- TypeApplications
 --
 -- @
+-- import Prelude
+--
+-- result :: Maybe [Char]
 -- result = Just "a"
 -- @
 --

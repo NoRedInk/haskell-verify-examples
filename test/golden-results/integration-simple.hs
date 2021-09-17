@@ -93,16 +93,16 @@ test/assets/UnverifiedExamples.hs:29
 
 Examples of module WithContext unverified.
 
-test/assets/WithContext.hs:14
-[2m  9: --
-[m[2m  10: -- @
-[m[2m  11: -- result = Just "a"
-[m[2m  12: -- @
-[m[2m  13: --
-[m✗ 14: -- > id @(Maybe [Char]) test ==> result
-[2m  15: test :: Maybe [Char]
-[m[2m  16: test = Just "a"
-[m[2m  17: 
+test/assets/WithContext.hs:17
+[2m  12: --
+[m[2m  13: -- result :: Maybe [Char]
+[m[2m  14: -- result = Just "a"
+[m[2m  15: -- @
+[m[2m  16: --
+[m✗ 17: -- > id @(Maybe [Char]) test ==> result
+[2m  18: test :: Maybe [Char]
+[m[2m  19: test = Just "a"
+[m[2m  20: 
 [mThe example doesn't compile:
 <interactive>:2:1: error:
     Variable not in scope: id :: Maybe [Char] -> a0<interactive>:2:29: error: Variable not in scope: result

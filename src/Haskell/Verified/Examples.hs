@@ -261,6 +261,7 @@ toComments cs =
 data CommentType = CodeBlock | PlainText | ContextBlock
   deriving (Show)
 
+-- TODO wow this needs some cleaning up
 mergeComments :: List (CommentType, LHE.Comments.Comment) -> Bool -> List LHE.Comments.Comment -> List (CommentType, LHE.Comments.Comment)
 mergeComments acc _ [] = List.reverse acc
 mergeComments [] _ (next : rest) =
