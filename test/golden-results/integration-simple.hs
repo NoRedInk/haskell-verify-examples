@@ -91,6 +91,22 @@ test/assets/UnverifiedExamples.hs:29
       In an equation for ‘e_112341’:
           e_112341 = [1, 2, 3, ....] |> map (+ 1) ==> True
 
+Examples of module WithContext unverified.
+
+test/assets/WithContext.hs:14
+[2m  9: --
+[m[2m  10: -- @
+[m[2m  11: -- result = Just "a"
+[m[2m  12: -- @
+[m[2m  13: --
+[m✗ 14: -- > id @(Maybe [Char]) test ==> result
+[2m  15: test :: Maybe [Char]
+[m[2m  16: test = Just "a"
+[m[2m  17: 
+[mThe example doesn't compile:
+<interactive>:2:1: error:
+    Variable not in scope: id :: Maybe [Char] -> a0<interactive>:2:29: error: Variable not in scope: result
+
 Examples unverified.
 
 test/assets/Headless.hs:3
@@ -118,6 +134,7 @@ No examples: 2
   In these files:
   * test/assets/Simple.hs
   * test/assets/UnverifiedExamples.hs
-Evaluation failed: 1
+Evaluation failed: 2
   In these files:
   * test/assets/UnverifiedExamples.hs
+  * test/assets/WithContext.hs
