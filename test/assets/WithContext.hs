@@ -8,12 +8,10 @@ import NriPrelude
 -- TypeApplications
 --
 -- @
--- import Prelude
---
 -- result :: Maybe [Char]
 -- result = Just "a"
 -- @
 --
--- > id @(Maybe [Char]) test ==> result
+-- > identity @(Maybe [Char]) test ==> result
 test :: Maybe [Char]
 test = Just "a"
