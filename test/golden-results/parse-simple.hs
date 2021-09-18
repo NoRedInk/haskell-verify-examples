@@ -32,7 +32,7 @@ Module
               { srcInfoSpan = SrcSpan "test/assets/Simple.hs" 7 1 8 3
               , srcInfoPoints = []
               }
-          , " hello world\n"
+          , [ " hello world\n" ]
           )
       , CodeBlockComment
           (VerifiedExample
@@ -40,14 +40,14 @@ Module
                  { srcInfoSpan = SrcSpan "test/assets/Simple.hs" 9 1 10 11
                  , srcInfoPoints = []
                  }
-             , "test\n==> 1"
+             , [ "test" , "==> 1" ]
              ))
       , PlainTextComment
           ( SrcSpanInfo
               { srcInfoSpan = SrcSpan "test/assets/Simple.hs" 11 1 11 3
               , srcInfoPoints = []
               }
-          , ""
+          , [ "" ]
           )
       , CodeBlockComment
           (VerifiedExample
@@ -55,14 +55,14 @@ Module
                  { srcInfoSpan = SrcSpan "test/assets/Simple.hs" 12 1 13 11
                  , srcInfoPoints = []
                  }
-             , "test + test\n==> 2"
+             , [ "test + test" , "==> 2" ]
              ))
       , PlainTextComment
           ( SrcSpanInfo
               { srcInfoSpan = SrcSpan "test/assets/Simple.hs" 14 1 14 3
               , srcInfoPoints = []
               }
-          , ""
+          , [ "" ]
           )
       , CodeBlockComment
           (UnverifiedExample
@@ -70,7 +70,7 @@ Module
                  { srcInfoSpan = SrcSpan "test/assets/Simple.hs" 15 1 15 17
                  , srcInfoPoints = []
                  }
-             , "test + test"
+             , [ "test + test" ]
              ))
       ]
   }

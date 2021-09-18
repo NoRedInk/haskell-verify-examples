@@ -18,6 +18,7 @@ where
 
 import qualified Control.Concurrent.Async as Async
 import qualified Data.Foldable as Foldable
+import qualified Data.List
 import qualified HIE.Bios.Cradle
 import qualified HIE.Bios.Environment
 import qualified HIE.Bios.Flags
@@ -50,7 +51,7 @@ verifyExample :: ModuleInfo -> Example -> Prelude.IO ExampleResult
 verifyExample modInfo example =
   case example of
     VerifiedExample (_, code) -> do
-      result <- eval modInfo code
+      result <- eval modInfo (Prelude.unlines code)
       case result of
         Prelude.Left err ->
           Prelude.pure (ExampleVerifyFailed example err)
@@ -117,7 +118,7 @@ makeImport importDecl =
     importToString (LHE.Syntax.IThingAll _ n) = getName n ++ "(..)"
     importToString (LHE.Syntax.IThingWith _ n ns) = getName n ++ "(" ++ (List.concat <| List.intersperse "," (List.map getCName ns)) ++ ")"
 
-eval :: ModuleInfo -> Text -> Prelude.IO (Prelude.Either Hint.InterpreterError Verified)
+eval :: ModuleInfo -> Prelude.String -> Prelude.IO (Prelude.Either Hint.InterpreterError Verified)
 eval moduleInfo s = do
   let modulePath = moduleFilePath moduleInfo
   let interpreter = case packageDbs moduleInfo of
@@ -150,7 +151,7 @@ eval moduleInfo s = do
             ]
 
     Hint.setImportsF (exampleImports ++ imports moduleInfo)
-    Hint.interpret (Text.toList s) (Hint.as :: Verified)
+    Hint.interpret s (Hint.as :: Verified)
 
 trimPrefix :: Text -> Text -> Maybe Text
 trimPrefix prefix text
@@ -166,9 +167,9 @@ getDefaultLanguageExtensions = List.filterMap <| trimPrefix "-X"
 getPackageDbs :: List Text -> List Text
 getPackageDbs options = List.concat [[l, r] | (l, r) <- Prelude.zip options (List.drop 1 options), l == "-package-db"]
 
-exampleFromText :: Text -> Example
+exampleFromText :: Prelude.String -> Example
 exampleFromText val =
-  toExample LHE.SrcLoc.noSrcSpan val
+  toExample LHE.SrcLoc.noSrcSpan (Prelude.lines val)
 
 parse :: Prelude.FilePath -> Prelude.IO Module
 parse path = do
@@ -247,55 +248,40 @@ toComments cs =
   cs
     |> mergeComments [] False
     |> List.map
-      ( \(ct, LHE.Comments.Comment _ srcSpan val) ->
+      ( \(ct, (LHE.Comments.Comment _ srcSpan val)) ->
           case ct of
             CodeBlock ->
-              toExample
-                (LHE.SrcLoc.noInfoSpan srcSpan)
-                (Text.fromList val)
+              val
+                |> Prelude.lines
+                |> List.map (Prelude.dropWhile (/= '>') >> Prelude.drop 2)
+                |> toExample (LHE.SrcLoc.noInfoSpan srcSpan)
                 |> CodeBlockComment
-            PlainText -> PlainTextComment (LHE.SrcLoc.noInfoSpan srcSpan, Text.fromList val)
-            ContextBlock -> ContextBlockComment (LHE.SrcLoc.noInfoSpan srcSpan, Text.fromList val)
+            PlainText -> PlainTextComment (LHE.SrcLoc.noInfoSpan srcSpan, [val])
+            ContextBlock ->
+              val
+                |> Prelude.lines
+                |> Data.List.tail
+                |> Data.List.init
+                |> List.map (Prelude.drop 1)
+                |> (,) (LHE.SrcLoc.noInfoSpan srcSpan)
+                |> ContextBlockComment
       )
 
 data CommentType = CodeBlock | PlainText | ContextBlock
-  deriving (Show)
+  deriving (Show, Eq)
 
--- TODO wow this needs some cleaning up
 mergeComments :: List (CommentType, LHE.Comments.Comment) -> Bool -> List LHE.Comments.Comment -> List (CommentType, LHE.Comments.Comment)
 mergeComments acc _ [] = List.reverse acc
-mergeComments [] _ (next : rest) =
-  case commentType next of
-    CodeBlock -> mergeComments [(CodeBlock, cleanCodeBlock next)] False rest
-    PlainText -> mergeComments [(PlainText, next)] False rest
-    ContextBlock -> mergeComments [(ContextBlock, next)] True rest
-mergeComments ((_, prevComment) : acc) True (next : rest) =
-  case commentType next of
-    CodeBlock -> mergeComments ((ContextBlock, concatComment prevComment next) : acc) True rest
-    PlainText -> mergeComments ((ContextBlock, concatComment prevComment next) : acc) True rest
-    ContextBlock -> mergeComments ((ContextBlock, concatComment prevComment (cleanCodeBlock next)) : acc) False rest
-mergeComments (prev@(prevCT, prevComment) : acc) False (next : rest) =
-  case (prevCT, commentType next) of
-    (CodeBlock, CodeBlock) -> mergeComments ((CodeBlock, concatComment prevComment (cleanCodeBlock next)) : acc) False rest
-    (PlainText, PlainText) -> mergeComments ((PlainText, concatComment prevComment next) : acc) False rest
-    (PlainText, CodeBlock) -> mergeComments ((CodeBlock, cleanCodeBlock next) : prev : acc) False rest
-    (CodeBlock, PlainText) -> mergeComments ((PlainText, next) : prev : acc) False rest
-    (_, ContextBlock) -> mergeComments ((ContextBlock, cleanCodeBlock next) : prev : acc) True rest
-    (ContextBlock, CodeBlock) -> mergeComments ((CodeBlock, cleanCodeBlock next) : prev : acc) False rest
-    (ContextBlock, PlainText) -> mergeComments ((PlainText, next) : prev : acc) False rest
-
--- @
---
---
---
---
--- @
-
-cleanCodeBlock :: LHE.Comments.Comment -> LHE.Comments.Comment
-cleanCodeBlock (LHE.Comments.Comment t s text) =
-  text
-    |> Prelude.drop 3
-    |> LHE.Comments.Comment t s
+mergeComments acc isInContext (next : restNext) =
+  let nextCt = commentType next
+      stillInContext = if isInContext then nextCt /= ContextBlock else nextCt == ContextBlock
+      newAcc = case acc of
+        [] -> [(nextCt, next)]
+        (prevCt, prev) : restPrev ->
+          if isInContext || prevCt == nextCt
+            then (prevCt, concatComment prev next) : restPrev
+            else (nextCt, next) : acc
+   in mergeComments newAcc stillInContext restNext
 
 commentType :: LHE.Comments.Comment -> CommentType
 commentType (LHE.Comments.Comment _ _ text) =
@@ -313,12 +299,12 @@ hasArrow text =
     || Text.trim (Text.fromList text) == ">"
 
 concatComment :: LHE.Comments.Comment -> LHE.Comments.Comment -> LHE.Comments.Comment
-concatComment (LHE.Comments.Comment _ srcSpanA a) (LHE.Comments.Comment _ srcSpanB b) =
+concatComment commentA@(LHE.Comments.Comment _ srcSpanA a) commentB@(LHE.Comments.Comment _ srcSpanB b) =
   LHE.Comments.Comment True (LHE.SrcLoc.mergeSrcSpan srcSpanA srcSpanB) (a ++ "\n" ++ b)
 
-toExample :: LHE.SrcLoc.SrcSpanInfo -> Text -> Example
+toExample :: LHE.SrcLoc.SrcSpanInfo -> List Prelude.String -> Example
 toExample srcLocInfo source =
-  case LHE.Lexer.lexTokenStream (Text.toList source) of
+  case LHE.Lexer.lexTokenStream (Prelude.unlines source) of
     LHE.Parser.ParseOk tokens ->
       if Foldable.any ((== LHE.Lexer.VarSym "==>") << LHE.Lexer.unLoc) tokens
         then VerifiedExample (srcLocInfo, source)

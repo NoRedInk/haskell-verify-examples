@@ -38,14 +38,14 @@ data ModuleInfo = ModuleInfo
   deriving (Show)
 
 data Comment
-  = PlainTextComment (LHE.SrcLoc.SrcSpanInfo, Text)
+  = PlainTextComment (LHE.SrcLoc.SrcSpanInfo, List Prelude.String)
   | CodeBlockComment Example
-  | ContextBlockComment (LHE.SrcLoc.SrcSpanInfo, Text)
+  | ContextBlockComment (LHE.SrcLoc.SrcSpanInfo, List Prelude.String)
   deriving (Show, Eq)
 
 data Example
-  = VerifiedExample (LHE.SrcLoc.SrcSpanInfo, Text)
-  | UnverifiedExample (LHE.SrcLoc.SrcSpanInfo, Text)
+  = VerifiedExample (LHE.SrcLoc.SrcSpanInfo, List Prelude.String)
+  | UnverifiedExample (LHE.SrcLoc.SrcSpanInfo, List Prelude.String)
   deriving (Show, Eq)
 
 exampleSrcSpan :: Example -> LHE.SrcLoc.SrcSpan

@@ -78,7 +78,7 @@ tests =
                       ", 4",
                       "]"
                     ]
-                      |> Text.join "\n"
+                      |> Prelude.unlines
                       |> HVE.exampleFromText
               result <-
                 example
@@ -101,7 +101,7 @@ tests =
                     ", 5",
                     "]"
                   ]
-                    |> Text.join "\n"
+                    |> Prelude.unlines
                     |> HVE.exampleFromText
             result <-
               example
