@@ -247,23 +247,22 @@ toComments cs =
   cs
     |> mergeComments [] False
     |> List.filterMap
-      ( \(ct, (LHE.Comments.Comment _ srcSpan val)) ->
+      ( \(ct, comments) ->
           case ct of
             PlainText -> Nothing
             CodeBlock ->
-              val
-                |> Prelude.lines
-                |> List.map (Prelude.dropWhile (/= '>') >> Prelude.drop 2)
-                |> toExample (LHE.SrcLoc.noInfoSpan srcSpan)
+              comments
+                |> List.map (commentValue >> Prelude.dropWhile (/= '>') >> Prelude.drop 2)
+                |> toExample (LHE.SrcLoc.noInfoSpan (mergeSrcSpans comments))
                 |> CodeBlockComment
                 |> Just
             ContextBlock ->
-              val
-                |> Prelude.lines
+              comments
+                |> List.map commentValue
                 |> Data.List.tail
                 |> Data.List.init
                 |> List.map (Prelude.drop 1)
-                |> (,) (LHE.SrcLoc.noInfoSpan srcSpan)
+                |> (,) (LHE.SrcLoc.noInfoSpan (mergeSrcSpans comments))
                 |> ContextBlockComment
                 |> Just
       )
@@ -271,17 +270,21 @@ toComments cs =
 data CommentType = CodeBlock | PlainText | ContextBlock
   deriving (Show, Eq)
 
-mergeComments :: List (CommentType, LHE.Comments.Comment) -> Bool -> List LHE.Comments.Comment -> List (CommentType, LHE.Comments.Comment)
+mergeComments ::
+  List (CommentType, List LHE.Comments.Comment) ->
+  Bool ->
+  List LHE.Comments.Comment ->
+  List (CommentType, List LHE.Comments.Comment)
 mergeComments acc _ [] = List.reverse acc
 mergeComments acc isInContext (next : restNext) =
   let nextCt = commentType next
       stillInContext = if isInContext then nextCt /= ContextBlock else nextCt == ContextBlock
       newAcc = case acc of
-        [] -> [(nextCt, next)]
+        [] -> [(nextCt, [next])]
         (prevCt, prev) : restPrev ->
           if isInContext || prevCt == nextCt
-            then (prevCt, concatComment prev next) : restPrev
-            else (nextCt, next) : acc
+            then (prevCt, prev ++ [next]) : restPrev
+            else (nextCt, [next]) : acc
    in mergeComments newAcc stillInContext restNext
 
 commentType :: LHE.Comments.Comment -> CommentType
@@ -302,6 +305,17 @@ hasArrow text =
 concatComment :: LHE.Comments.Comment -> LHE.Comments.Comment -> LHE.Comments.Comment
 concatComment commentA@(LHE.Comments.Comment _ srcSpanA a) commentB@(LHE.Comments.Comment _ srcSpanB b) =
   LHE.Comments.Comment True (LHE.SrcLoc.mergeSrcSpan srcSpanA srcSpanB) (a ++ "\n" ++ b)
+
+commentValue :: LHE.Comments.Comment -> Prelude.String
+commentValue (LHE.Comments.Comment _ _ a) = a
+
+mergeSrcSpans :: List LHE.Comments.Comment -> LHE.SrcLoc.SrcSpan
+mergeSrcSpans [] = LHE.SrcLoc.mkSrcSpan LHE.SrcLoc.noLoc LHE.SrcLoc.noLoc
+mergeSrcSpans (LHE.Comments.Comment _ first _ : rest) =
+  List.foldl
+    (\(LHE.Comments.Comment _ srcSpan _) acc -> LHE.SrcLoc.mergeSrcSpan acc srcSpan)
+    first
+    rest
 
 toExample :: LHE.SrcLoc.SrcSpanInfo -> List Prelude.String -> Example
 toExample srcLocInfo source =
