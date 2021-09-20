@@ -30,54 +30,29 @@ Module
   , comments =
       [ CodeBlockComment
           (VerifiedExample
-             ( SrcSpanInfo
-                 { srcInfoSpan =
-                     SrcSpan "test/assets/UnverifiedExamples.hs" 9 1 10 11
-                 , srcInfoPoints = []
-                 }
-             , [ "test" , "==> 1" ]
-             ))
+             (SrcSpan "test/assets/UnverifiedExamples.hs" 9 1 10 11)
+             [ "test" , "==> 1" ])
       , CodeBlockComment
           (UnverifiedExample
-             ( SrcSpanInfo
-                 { srcInfoSpan =
-                     SrcSpan "test/assets/UnverifiedExamples.hs" 12 1 12 10
-                 , srcInfoPoints = []
-                 }
-             , [ "test" ]
-             ))
+             (SrcSpan "test/assets/UnverifiedExamples.hs" 12 1 12 10)
+             [ "test" ])
       , CodeBlockComment
           (VerifiedExample
-             ( SrcSpanInfo
-                 { srcInfoSpan =
-                     SrcSpan "test/assets/UnverifiedExamples.hs" 14 1 15 11
-                 , srcInfoPoints = []
-                 }
-             , [ "test + test" , "==> 3" ]
-             ))
+             (SrcSpan "test/assets/UnverifiedExamples.hs" 14 1 15 11)
+             [ "test + test" , "==> 3" ])
       , CodeBlockComment
           (VerifiedExample
-             ( SrcSpanInfo
-                 { srcInfoSpan =
-                     SrcSpan "test/assets/UnverifiedExamples.hs" 20 1 25 21
-                 , srcInfoPoints = []
-                 }
-             , [ "[ 1"
-               , ", 2"
-               , ", 3"
-               , ", 4"
-               , "] |> map (+ 1)"
-               , "==> [ 2, 4, 5 ]"
-               ]
-             ))
+             (SrcSpan "test/assets/UnverifiedExamples.hs" 20 1 25 21)
+             [ "[ 1"
+             , ", 2"
+             , ", 3"
+             , ", 4"
+             , "] |> map (+ 1)"
+             , "==> [ 2, 4, 5 ]"
+             ])
       , CodeBlockComment
           (VerifiedExample
-             ( SrcSpanInfo
-                 { srcInfoSpan =
-                     SrcSpan "test/assets/UnverifiedExamples.hs" 29 1 34 14
-                 , srcInfoPoints = []
-                 }
-             , [ "[ 1" , ", 2" , ", 3" , ", 4" , "] |> map (+ 1)" , "==> True" ]
-             ))
+             (SrcSpan "test/assets/UnverifiedExamples.hs" 29 1 34 14)
+             [ "[ 1" , ", 2" , ", 3" , ", 4" , "] |> map (+ 1)" , "==> True" ])
       ]
   }

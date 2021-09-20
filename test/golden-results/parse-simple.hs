@@ -29,27 +29,13 @@ Module
   , comments =
       [ CodeBlockComment
           (VerifiedExample
-             ( SrcSpanInfo
-                 { srcInfoSpan = SrcSpan "test/assets/Simple.hs" 9 1 10 11
-                 , srcInfoPoints = []
-                 }
-             , [ "test" , "==> 1" ]
-             ))
+             (SrcSpan "test/assets/Simple.hs" 9 1 10 11) [ "test" , "==> 1" ])
       , CodeBlockComment
           (VerifiedExample
-             ( SrcSpanInfo
-                 { srcInfoSpan = SrcSpan "test/assets/Simple.hs" 12 1 13 11
-                 , srcInfoPoints = []
-                 }
-             , [ "test + test" , "==> 2" ]
-             ))
+             (SrcSpan "test/assets/Simple.hs" 12 1 13 11)
+             [ "test + test" , "==> 2" ])
       , CodeBlockComment
           (UnverifiedExample
-             ( SrcSpanInfo
-                 { srcInfoSpan = SrcSpan "test/assets/Simple.hs" 15 1 15 17
-                 , srcInfoPoints = []
-                 }
-             , [ "test + test" ]
-             ))
+             (SrcSpan "test/assets/Simple.hs" 15 1 15 17) [ "test + test" ])
       ]
   }

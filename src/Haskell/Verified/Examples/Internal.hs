@@ -39,17 +39,17 @@ data ModuleInfo = ModuleInfo
 
 data Comment
   = CodeBlockComment Example
-  | ContextBlockComment (LHE.SrcLoc.SrcSpanInfo, List Prelude.String)
+  | ContextBlockComment LHE.SrcLoc.SrcSpan (List Prelude.String)
   deriving (Show, Eq)
 
 data Example
-  = VerifiedExample (LHE.SrcLoc.SrcSpanInfo, List Prelude.String)
-  | UnverifiedExample (LHE.SrcLoc.SrcSpanInfo, List Prelude.String)
+  = VerifiedExample LHE.SrcLoc.SrcSpan (List Prelude.String)
+  | UnverifiedExample LHE.SrcLoc.SrcSpan (List Prelude.String)
   deriving (Show, Eq)
 
 exampleSrcSpan :: Example -> LHE.SrcLoc.SrcSpan
-exampleSrcSpan (VerifiedExample (info, _)) = LHE.SrcLoc.srcInfoSpan info
-exampleSrcSpan (UnverifiedExample (info, _)) = LHE.SrcLoc.srcInfoSpan info
+exampleSrcSpan (VerifiedExample span _) = span
+exampleSrcSpan (UnverifiedExample span _) = span
 
 data ExampleResult
   = ExampleVerifySuccess Example Verified

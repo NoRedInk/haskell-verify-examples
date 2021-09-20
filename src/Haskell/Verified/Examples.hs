@@ -50,7 +50,7 @@ verify mod =
 verifyExample :: ModuleInfo -> Example -> Prelude.IO ExampleResult
 verifyExample modInfo example =
   case example of
-    VerifiedExample (_, code) -> do
+    VerifiedExample _ code -> do
       result <- eval modInfo (Prelude.unlines code)
       case result of
         Prelude.Left err ->
@@ -58,7 +58,7 @@ verifyExample modInfo example =
         Prelude.Right execResult ->
           ExampleVerifySuccess example execResult
             |> Prelude.pure
-    UnverifiedExample (_, code) ->
+    UnverifiedExample _ code ->
       NoExampleResult
         |> ExampleVerifySuccess example
         |> Prelude.pure
@@ -169,7 +169,7 @@ getPackageDbs options = List.concat [[l, r] | (l, r) <- Prelude.zip options (Lis
 
 exampleFromText :: Prelude.String -> Example
 exampleFromText val =
-  toExample LHE.SrcLoc.noSrcSpan (Prelude.lines val)
+  toExample emptySrcSpan (Prelude.lines val)
 
 parse :: Prelude.FilePath -> Prelude.IO Module
 parse path = do
@@ -211,7 +211,7 @@ examples =
   List.filterMap
     ( \c ->
         case c of
-          ContextBlockComment _ -> Nothing
+          ContextBlockComment _ _ -> Nothing
           CodeBlockComment example -> Just example
     )
 
@@ -253,7 +253,7 @@ toComments cs =
             CodeBlock ->
               comments
                 |> List.map (commentValue >> Prelude.dropWhile (/= '>') >> Prelude.drop 2)
-                |> toExample (LHE.SrcLoc.noInfoSpan (mergeSrcSpans comments))
+                |> toExample (commentsSrcSpan comments)
                 |> CodeBlockComment
                 |> Just
             ContextBlock ->
@@ -262,8 +262,7 @@ toComments cs =
                 |> Data.List.tail
                 |> Data.List.init
                 |> List.map (Prelude.drop 1)
-                |> (,) (LHE.SrcLoc.noInfoSpan (mergeSrcSpans comments))
-                |> ContextBlockComment
+                |> ContextBlockComment (commentsSrcSpan comments)
                 |> Just
       )
 
@@ -309,21 +308,24 @@ concatComment commentA@(LHE.Comments.Comment _ srcSpanA a) commentB@(LHE.Comment
 commentValue :: LHE.Comments.Comment -> Prelude.String
 commentValue (LHE.Comments.Comment _ _ a) = a
 
-mergeSrcSpans :: List LHE.Comments.Comment -> LHE.SrcLoc.SrcSpan
-mergeSrcSpans [] = LHE.SrcLoc.mkSrcSpan LHE.SrcLoc.noLoc LHE.SrcLoc.noLoc
-mergeSrcSpans (LHE.Comments.Comment _ first _ : rest) =
+commentsSrcSpan :: List LHE.Comments.Comment -> LHE.SrcLoc.SrcSpan
+commentsSrcSpan [] = emptySrcSpan
+commentsSrcSpan (LHE.Comments.Comment _ first _ : rest) =
   List.foldl
     (\(LHE.Comments.Comment _ srcSpan _) acc -> LHE.SrcLoc.mergeSrcSpan acc srcSpan)
     first
     rest
 
-toExample :: LHE.SrcLoc.SrcSpanInfo -> List Prelude.String -> Example
-toExample srcLocInfo source =
+emptySrcSpan :: LHE.SrcLoc.SrcSpan
+emptySrcSpan = LHE.SrcLoc.mkSrcSpan LHE.SrcLoc.noLoc LHE.SrcLoc.noLoc
+
+toExample :: LHE.SrcLoc.SrcSpan -> List Prelude.String -> Example
+toExample srcSpan source =
   case LHE.Lexer.lexTokenStream (Prelude.unlines source) of
     LHE.Parser.ParseOk tokens ->
       if Foldable.any ((== LHE.Lexer.VarSym "==>") << LHE.Lexer.unLoc) tokens
-        then VerifiedExample (srcLocInfo, source)
-        else UnverifiedExample (srcLocInfo, source)
+        then VerifiedExample srcSpan source
+        else UnverifiedExample srcSpan source
     LHE.Parser.ParseFailed _ msg ->
       let _ = Debug.log "msg" msg
        in Debug.todo "TODO"

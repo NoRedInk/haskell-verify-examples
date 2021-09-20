@@ -30,19 +30,11 @@ Module
         }
   , comments =
       [ ContextBlockComment
-          ( SrcSpanInfo
-              { srcInfoSpan = SrcSpan "test/assets/WithContext.hs" 10 1 13 5
-              , srcInfoPoints = []
-              }
-          , [ "result :: Maybe [Char]" , "result = Just \"a\"" ]
-          )
+          (SrcSpan "test/assets/WithContext.hs" 10 1 13 5)
+          [ "result :: Maybe [Char]" , "result = Just \"a\"" ]
       , CodeBlockComment
           (VerifiedExample
-             ( SrcSpanInfo
-                 { srcInfoSpan = SrcSpan "test/assets/WithContext.hs" 15 1 15 46
-                 , srcInfoPoints = []
-                 }
-             , [ "identity @(Maybe [Char]) test ==> result" ]
-             ))
+             (SrcSpan "test/assets/WithContext.hs" 15 1 15 46)
+             [ "identity @(Maybe [Char]) test ==> result" ])
       ]
   }
