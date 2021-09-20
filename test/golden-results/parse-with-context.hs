@@ -29,26 +29,12 @@ Module
         , packageDbs = []
         }
   , comments =
-      [ PlainTextComment
-          ( SrcSpanInfo
-              { srcInfoSpan = SrcSpan "test/assets/WithContext.hs" 8 1 9 3
-              , srcInfoPoints = []
-              }
-          , [ " TypeApplications\n" ]
-          )
-      , ContextBlockComment
+      [ ContextBlockComment
           ( SrcSpanInfo
               { srcInfoSpan = SrcSpan "test/assets/WithContext.hs" 10 1 13 5
               , srcInfoPoints = []
               }
           , [ "result :: Maybe [Char]" , "result = Just \"a\"" ]
-          )
-      , PlainTextComment
-          ( SrcSpanInfo
-              { srcInfoSpan = SrcSpan "test/assets/WithContext.hs" 14 1 14 3
-              , srcInfoPoints = []
-              }
-          , [ "" ]
           )
       , CodeBlockComment
           (VerifiedExample

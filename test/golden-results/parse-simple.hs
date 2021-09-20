@@ -27,14 +27,7 @@ Module
         , packageDbs = []
         }
   , comments =
-      [ PlainTextComment
-          ( SrcSpanInfo
-              { srcInfoSpan = SrcSpan "test/assets/Simple.hs" 7 1 8 3
-              , srcInfoPoints = []
-              }
-          , [ " hello world\n" ]
-          )
-      , CodeBlockComment
+      [ CodeBlockComment
           (VerifiedExample
              ( SrcSpanInfo
                  { srcInfoSpan = SrcSpan "test/assets/Simple.hs" 9 1 10 11
@@ -42,13 +35,6 @@ Module
                  }
              , [ "test" , "==> 1" ]
              ))
-      , PlainTextComment
-          ( SrcSpanInfo
-              { srcInfoSpan = SrcSpan "test/assets/Simple.hs" 11 1 11 3
-              , srcInfoPoints = []
-              }
-          , [ "" ]
-          )
       , CodeBlockComment
           (VerifiedExample
              ( SrcSpanInfo
@@ -57,13 +43,6 @@ Module
                  }
              , [ "test + test" , "==> 2" ]
              ))
-      , PlainTextComment
-          ( SrcSpanInfo
-              { srcInfoSpan = SrcSpan "test/assets/Simple.hs" 14 1 14 3
-              , srcInfoPoints = []
-              }
-          , [ "" ]
-          )
       , CodeBlockComment
           (UnverifiedExample
              ( SrcSpanInfo

@@ -38,8 +38,7 @@ data ModuleInfo = ModuleInfo
   deriving (Show)
 
 data Comment
-  = PlainTextComment (LHE.SrcLoc.SrcSpanInfo, List Prelude.String)
-  | CodeBlockComment Example
+  = CodeBlockComment Example
   | ContextBlockComment (LHE.SrcLoc.SrcSpanInfo, List Prelude.String)
   deriving (Show, Eq)
 

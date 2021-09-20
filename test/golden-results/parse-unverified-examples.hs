@@ -28,14 +28,7 @@ Module
         , packageDbs = []
         }
   , comments =
-      [ PlainTextComment
-          ( SrcSpanInfo
-              { srcInfoSpan = SrcSpan "test/assets/UnverifiedExamples.hs" 7 1 8 3
-              , srcInfoPoints = []
-              }
-          , [ " hello world\n" ]
-          )
-      , CodeBlockComment
+      [ CodeBlockComment
           (VerifiedExample
              ( SrcSpanInfo
                  { srcInfoSpan =
@@ -44,14 +37,6 @@ Module
                  }
              , [ "test" , "==> 1" ]
              ))
-      , PlainTextComment
-          ( SrcSpanInfo
-              { srcInfoSpan =
-                  SrcSpan "test/assets/UnverifiedExamples.hs" 11 1 11 3
-              , srcInfoPoints = []
-              }
-          , [ "" ]
-          )
       , CodeBlockComment
           (UnverifiedExample
              ( SrcSpanInfo
@@ -61,14 +46,6 @@ Module
                  }
              , [ "test" ]
              ))
-      , PlainTextComment
-          ( SrcSpanInfo
-              { srcInfoSpan =
-                  SrcSpan "test/assets/UnverifiedExamples.hs" 13 1 13 3
-              , srcInfoPoints = []
-              }
-          , [ "" ]
-          )
       , CodeBlockComment
           (VerifiedExample
              ( SrcSpanInfo
@@ -78,14 +55,6 @@ Module
                  }
              , [ "test + test" , "==> 3" ]
              ))
-      , PlainTextComment
-          ( SrcSpanInfo
-              { srcInfoSpan =
-                  SrcSpan "test/assets/UnverifiedExamples.hs" 18 1 19 3
-              , srcInfoPoints = []
-              }
-          , [ " | more stuff\n" ]
-          )
       , CodeBlockComment
           (VerifiedExample
              ( SrcSpanInfo
@@ -101,14 +70,6 @@ Module
                , "==> [ 2, 4, 5 ]"
                ]
              ))
-      , PlainTextComment
-          ( SrcSpanInfo
-              { srcInfoSpan =
-                  SrcSpan "test/assets/UnverifiedExamples.hs" 27 1 28 3
-              , srcInfoPoints = []
-              }
-          , [ " | compilation fails\n" ]
-          )
       , CodeBlockComment
           (VerifiedExample
              ( SrcSpanInfo

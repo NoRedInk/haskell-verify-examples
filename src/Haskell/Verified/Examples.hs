@@ -211,7 +211,6 @@ examples =
   List.filterMap
     ( \c ->
         case c of
-          PlainTextComment _ -> Nothing
           ContextBlockComment _ -> Nothing
           CodeBlockComment example -> Just example
     )
@@ -247,16 +246,17 @@ toComments :: List LHE.Comments.Comment -> List Comment
 toComments cs =
   cs
     |> mergeComments [] False
-    |> List.map
+    |> List.filterMap
       ( \(ct, (LHE.Comments.Comment _ srcSpan val)) ->
           case ct of
+            PlainText -> Nothing
             CodeBlock ->
               val
                 |> Prelude.lines
                 |> List.map (Prelude.dropWhile (/= '>') >> Prelude.drop 2)
                 |> toExample (LHE.SrcLoc.noInfoSpan srcSpan)
                 |> CodeBlockComment
-            PlainText -> PlainTextComment (LHE.SrcLoc.noInfoSpan srcSpan, [val])
+                |> Just
             ContextBlock ->
               val
                 |> Prelude.lines
@@ -265,6 +265,7 @@ toComments cs =
                 |> List.map (Prelude.drop 1)
                 |> (,) (LHE.SrcLoc.noInfoSpan srcSpan)
                 |> ContextBlockComment
+                |> Just
       )
 
 data CommentType = CodeBlock | PlainText | ContextBlock
