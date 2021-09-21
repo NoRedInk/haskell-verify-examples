@@ -93,16 +93,16 @@ test/assets/UnverifiedExamples.hs:29
 
 Examples of module WithContext unverified.
 
-test/assets/WithContext.hs:17
-[2m  12: -- result = Just "a"
-[m[2m  13: -- @
-[m[2m  14: --
-[m[2m  15: -- > identity @(Maybe [Char]) test ==> result
-[m[2m  16: --
-[m✗ 17: -- > Just "b" ==> result
-[2m  18: test :: Maybe [Char]
-[m[2m  19: test = Just "a"
-[m[2m  20: 
+test/assets/WithContext.hs:21
+[2m  16: --
+[m[2m  17: -- Examples:
+[m[2m  18: --
+[m[2m  19: -- > identity @(Maybe [Char]) test ==> result
+[m[2m  20: --
+[m✗ 21: -- > Just "b" ==> result
+[2m  22: test :: Maybe [Char]
+[m[2m  23: test = Just "a"
+[m[2m  24: 
 [mThe example was incorrect and couldn't be verified.
         ▼
 "Just \"b\""
