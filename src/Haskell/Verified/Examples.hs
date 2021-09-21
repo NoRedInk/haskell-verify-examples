@@ -19,6 +19,7 @@ where
 import qualified Control.Concurrent.Async as Async
 import qualified Data.Foldable as Foldable
 import qualified Data.List
+import qualified Data.Text.IO
 import qualified HIE.Bios.Cradle
 import qualified HIE.Bios.Environment
 import qualified HIE.Bios.Flags
@@ -42,16 +43,17 @@ import qualified Prelude
 
 verify :: Module -> Prelude.IO (List ExampleResult)
 verify mod =
-  mod
-    |> comments
-    |> examples
-    |> Prelude.traverse (verifyExample (moduleInfo mod))
+  withContext (comments mod) <| \maybeContext ->
+    mod
+      |> comments
+      |> examples
+      |> Prelude.traverse (verifyExample (moduleInfo mod) maybeContext)
 
-verifyExample :: ModuleInfo -> Example -> Prelude.IO ExampleResult
-verifyExample modInfo example =
+verifyExample :: ModuleInfo -> Maybe Context -> Example -> Prelude.IO ExampleResult
+verifyExample modInfo maybeContext example =
   case example of
     VerifiedExample _ code -> do
-      result <- eval modInfo (Prelude.unlines code)
+      result <- eval modInfo (Prelude.unlines code) maybeContext
       case result of
         Prelude.Left err ->
           Prelude.pure (ExampleVerifyFailed example err)
@@ -118,8 +120,12 @@ makeImport importDecl =
     importToString (LHE.Syntax.IThingAll _ n) = getName n ++ "(..)"
     importToString (LHE.Syntax.IThingWith _ n ns) = getName n ++ "(" ++ (List.concat <| List.intersperse "," (List.map getCName ns)) ++ ")"
 
-eval :: ModuleInfo -> Prelude.String -> Prelude.IO (Prelude.Either Hint.InterpreterError Verified)
-eval moduleInfo s = do
+eval ::
+  ModuleInfo ->
+  Prelude.String ->
+  Maybe Context ->
+  Prelude.IO (Prelude.Either Hint.InterpreterError Verified)
+eval moduleInfo s maybeContext = do
   let modulePath = moduleFilePath moduleInfo
   let interpreter = case packageDbs moduleInfo of
         [] -> Hint.runInterpreter
@@ -133,22 +139,28 @@ eval moduleInfo s = do
     let searchPaths = List.map Text.toList <| importPaths moduleInfo
     Hint.set [Hint.languageExtensions Hint.:= langs, Hint.searchPath Hint.:= searchPaths]
 
-    Hint.loadModules
-      ( if modulePath == ""
-          then preload
-          else modulePath : preload
-      )
+    [ if modulePath == ""
+        then []
+        else [modulePath],
+      case maybeContext of
+        Nothing -> []
+        Just Context {contextModulePath} -> [contextModulePath],
+      preload
+      ]
+      |> List.concat
+      |> Hint.loadModules
 
     case moduleName moduleInfo of
       Just name -> Hint.setTopLevelModules [Text.toList name]
       Nothing -> Prelude.return ()
 
     let exampleImports =
-          List.map
-            makeSimpleImport
-            [ "Haskell.Verified.Examples.RunTime",
-              "Haskell.Verified.Examples.Verified"
-            ]
+          [ Just "Haskell.Verified.Examples.RunTime",
+            Just "Haskell.Verified.Examples.Verified",
+            Maybe.map contextModuleName maybeContext
+          ]
+            |> List.filterMap identity
+            |> List.map makeSimpleImport
 
     Hint.setImportsF (exampleImports ++ imports moduleInfo)
     Hint.interpret s (Hint.as :: Verified)
@@ -214,6 +226,36 @@ examples =
           ContextBlockComment _ _ -> Nothing
           CodeBlockComment example -> Just example
     )
+
+contextBlocks :: List Comment -> List Prelude.String
+contextBlocks =
+  List.concatMap
+    ( \c ->
+        case c of
+          ContextBlockComment _ context -> context
+          CodeBlockComment _ -> []
+    )
+
+data Context = Context
+  { contextModulePath :: Prelude.FilePath,
+    contextModuleName :: Text
+  }
+
+withContext :: List Comment -> (Maybe Context -> Prelude.IO a) -> Prelude.IO a
+withContext comments go = do
+  let contextModuleName = "HaskellVerifiedExamplesContext"
+  case contextBlocks comments of
+    [] -> go Nothing
+    xs ->
+      withTempFile
+        ( \path handle -> do
+            System.IO.hPutStrLn handle ("module " ++ Text.toList contextModuleName ++ " where")
+            xs
+              |> Prelude.unlines
+              |> System.IO.hPutStr handle
+            Prelude.pure ()
+        )
+        (\contextModulePath -> go (Just Context {contextModulePath, contextModuleName}))
 
 toModule ::
   ( LHE.Syntax.Module LHE.SrcLoc.SrcSpanInfo,
@@ -356,3 +398,14 @@ report reporters results =
   ]
     |> List.filterMap identity
     |> Async.mapConcurrently_ identity
+
+withTempFile ::
+  (System.IO.FilePath -> System.IO.Handle -> Prelude.IO ()) ->
+  (Prelude.FilePath -> Prelude.IO a) ->
+  Prelude.IO a
+withTempFile before go = do
+  (path, handle) <-
+    System.IO.openTempFile "/tmp" "HaskellVerifiedExamples.hs"
+  _ <- before path handle
+  System.IO.hClose handle
+  go path

@@ -93,19 +93,24 @@ test/assets/UnverifiedExamples.hs:29
 
 Examples of module WithContext unverified.
 
-test/assets/WithContext.hs:15
-[2m  10: -- @
-[m[2m  11: -- result :: Maybe [Char]
-[m[2m  12: -- result = Just "a"
-[m[2m  13: -- @
-[m[2m  14: --
-[m✗ 15: -- > identity @(Maybe [Char]) test ==> result
-[2m  16: test :: Maybe [Char]
-[m[2m  17: test = Just "a"
-[m[2m  18: 
-[mThe example doesn't compile:
-<interactive>:2:35: error:
-    Variable not in scope: result :: Maybe [Char]
+test/assets/WithContext.hs:19
+[2m  14: -- result = Just "a"
+[m[2m  15: -- @
+[m[2m  16: --
+[m[2m  17: -- > identity @(Maybe [Char]) test ==> result
+[m[2m  18: --
+[m✗ 19: -- > Just "b" ==> result
+[2m  20: test :: Maybe [Char]
+[m[2m  21: test = Just "a"
+[m[2m  22: 
+[mThe example was incorrect and couldn't be verified.
+        ▼
+"Just \"b\""
+╷
+│ ==>
+╵
+"Just \"a\""
+        ▲
 
 Examples unverified.
 
@@ -125,16 +130,16 @@ test/assets/Headless.hs:3
  ▲
 
 [4mNot all examples verified![m
-Verified: 14
-Unverified: 3
+Verified: 15
+Unverified: 4
   In these files:
   * test/assets/Headless.hs
   * test/assets/UnverifiedExamples.hs
+  * test/assets/WithContext.hs
 No examples: 2
   In these files:
   * test/assets/Simple.hs
   * test/assets/UnverifiedExamples.hs
-Evaluation failed: 2
+Evaluation failed: 1
   In these files:
   * test/assets/UnverifiedExamples.hs
-  * test/assets/WithContext.hs

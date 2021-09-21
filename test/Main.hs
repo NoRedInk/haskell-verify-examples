@@ -50,6 +50,7 @@ tests =
               example
                 |> HVE.verifyExample
                   (HVE.shimModuleWithImports ["NriPrelude"])
+                  Nothing
                 |> Expect.fromIO
             result
               |> Debug.toString
@@ -60,6 +61,7 @@ tests =
               example
                 |> HVE.verifyExample
                   (HVE.shimModuleWithImports ["NriPrelude"])
+                  Nothing
                 |> Expect.fromIO
             result
               |> Debug.toString
@@ -84,6 +86,7 @@ tests =
                 example
                   |> HVE.verifyExample
                     (HVE.shimModuleWithImports ["List", "NriPrelude"])
+                    Nothing
                   |> Expect.fromIO
               result
                 |> Debug.toString
@@ -107,6 +110,7 @@ tests =
               example
                 |> HVE.verifyExample
                   (HVE.shimModuleWithImports ["List", "NriPrelude"])
+                  Nothing
                 |> Expect.fromIO
             result
               |> Debug.toString
