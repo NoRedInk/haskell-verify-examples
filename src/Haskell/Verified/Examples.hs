@@ -254,7 +254,7 @@ withContext modInfo comments go = do
             _ <-
               modInfo
                 |> imports
-                |> List.map printImport
+                |> List.map renderImport
                 |> Prelude.traverse (System.IO.hPutStrLn handle)
             xs
               |> Prelude.unlines
@@ -263,20 +263,20 @@ withContext modInfo comments go = do
         )
         (\contextModulePath -> go (Just Context {contextModulePath, contextModuleName}))
 
-printImport :: Hint.ModuleImport -> Prelude.String
-printImport m =
-  "import "
-    ++ ( case Hint.modQual m of
-           Hint.NotQualified -> Hint.modName m
-           Hint.ImportAs q -> Hint.modName m ++ " as " ++ q
-           Hint.QualifiedAs Nothing -> "qualified " ++ Hint.modName m
-           Hint.QualifiedAs (Just q) -> "qualified " ++ Hint.modName m ++ " as " ++ q
-       )
-    ++ ( case Hint.modImp m of
-           Hint.NoImportList -> ""
-           Hint.ImportList l -> " (" ++ Data.List.intercalate "," l ++ ")"
-           Hint.HidingList l -> " hiding (" ++ Data.List.intercalate "," l ++ ")"
-       )
+renderImport :: Hint.ModuleImport -> Prelude.String
+renderImport m =
+  Prelude.concat
+    [ "import ",
+      case Hint.modQual m of
+        Hint.NotQualified -> Hint.modName m
+        Hint.ImportAs q -> Hint.modName m ++ " as " ++ q
+        Hint.QualifiedAs Nothing -> "qualified " ++ Hint.modName m
+        Hint.QualifiedAs (Just q) -> "qualified " ++ Hint.modName m ++ " as " ++ q,
+      case Hint.modImp m of
+        Hint.NoImportList -> ""
+        Hint.ImportList l -> " (" ++ Data.List.intercalate "," l ++ ")"
+        Hint.HidingList l -> " hiding (" ++ Data.List.intercalate "," l ++ ")"
+    ]
 
 toModule ::
   ( LHE.Syntax.Module LHE.SrcLoc.SrcSpanInfo,
