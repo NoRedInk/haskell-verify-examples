@@ -1,11 +1,6 @@
 name: Makefile CI
 
-on:
-  push:
-    branches: [ trunk ]
-  pull_request:
-    branches: [ trunk ]
-  workflow_dispatch:
+on: [push, pull_request]
 
 jobs:
   build:
