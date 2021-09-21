@@ -43,7 +43,7 @@ import qualified Prelude
 
 verify :: Module -> Prelude.IO (List ExampleResult)
 verify Module {comments, moduleInfo} =
-  withContext comments <| \maybeContext ->
+  withContext moduleInfo comments <| \maybeContext ->
     comments
       |> examples
       |> Prelude.traverse (verifyExample moduleInfo maybeContext)
@@ -242,21 +242,41 @@ data Context = Context
     contextModuleName :: Text
   }
 
-withContext :: List Comment -> (Maybe Context -> Prelude.IO a) -> Prelude.IO a
-withContext comments go = do
+withContext :: ModuleInfo -> List Comment -> (Maybe Context -> Prelude.IO a) -> Prelude.IO a
+withContext modInfo comments go = do
   let contextModuleName = "HaskellVerifiedExamplesContext"
   case contextBlocks comments of
     [] -> go Nothing
     xs ->
       withTempFile
         ( \path handle -> do
-            System.IO.hPutStrLn handle ("module " ++ Text.toList contextModuleName ++ " where")
+            _ <- System.IO.hPutStrLn handle ("module " ++ Text.toList contextModuleName ++ " where")
+            _ <-
+              modInfo
+                |> imports
+                |> List.map printImport
+                |> Prelude.traverse (System.IO.hPutStrLn handle)
             xs
               |> Prelude.unlines
               |> System.IO.hPutStr handle
             Prelude.pure ()
         )
         (\contextModulePath -> go (Just Context {contextModulePath, contextModuleName}))
+
+printImport :: Hint.ModuleImport -> Prelude.String
+printImport m =
+  "import "
+    ++ ( case Hint.modQual m of
+           Hint.NotQualified -> Hint.modName m
+           Hint.ImportAs q -> Hint.modName m ++ " as " ++ q
+           Hint.QualifiedAs Nothing -> "qualified " ++ Hint.modName m
+           Hint.QualifiedAs (Just q) -> "qualified " ++ Hint.modName m ++ " as " ++ q
+       )
+    ++ ( case Hint.modImp m of
+           Hint.NoImportList -> ""
+           Hint.ImportList l -> " (" ++ Data.List.intercalate "," l ++ ")"
+           Hint.HidingList l -> " hiding (" ++ Data.List.intercalate "," l ++ ")"
+       )
 
 toModule ::
   ( LHE.Syntax.Module LHE.SrcLoc.SrcSpanInfo,

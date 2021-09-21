@@ -5,14 +5,16 @@ module WithContext where
 
 import NriPrelude
 
--- TypeApplications
+-- | TypeApplications
+--
+-- Setup for examples below:
 --
 -- @
--- import NriPrelude
---
 -- result :: Maybe [Char]
 -- result = Just "a"
 -- @
+--
+-- Examples:
 --
 -- > identity @(Maybe [Char]) test ==> result
 --
