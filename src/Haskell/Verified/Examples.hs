@@ -42,18 +42,19 @@ import qualified Text.Read
 import qualified Prelude
 
 verify :: Module -> Prelude.IO (List ExampleResult)
-verify mod =
-  withContext (comments mod) <| \maybeContext ->
-    mod
-      |> comments
+verify Module {comments, moduleInfo} =
+  withContext comments <| \maybeContext ->
+    comments
       |> examples
-      |> Prelude.traverse (verifyExample (moduleInfo mod) maybeContext)
+      |> Prelude.traverse (verifyExample moduleInfo maybeContext)
 
 verifyExample :: ModuleInfo -> Maybe Context -> Example -> Prelude.IO ExampleResult
 verifyExample modInfo maybeContext example =
   case example of
     VerifiedExample _ code -> do
-      result <- eval modInfo (Prelude.unlines code) maybeContext
+      result <-
+        Prelude.unlines code
+          |> eval modInfo maybeContext
       case result of
         Prelude.Left err ->
           Prelude.pure (ExampleVerifyFailed example err)
@@ -122,10 +123,10 @@ makeImport importDecl =
 
 eval ::
   ModuleInfo ->
-  Prelude.String ->
   Maybe Context ->
+  Prelude.String ->
   Prelude.IO (Prelude.Either Hint.InterpreterError Verified)
-eval moduleInfo s maybeContext = do
+eval moduleInfo maybeContext s = do
   let modulePath = moduleFilePath moduleInfo
   let interpreter = case packageDbs moduleInfo of
         [] -> Hint.runInterpreter
