@@ -1,5 +1,6 @@
 module Main (main) where
 
+import qualified Control.Concurrent.Async as Async
 import qualified Data.Text.IO
 import qualified Expect
 import qualified Haskell.Verified.Examples as HVE
@@ -125,17 +126,13 @@ tests =
             results <-
               assets
                 |> List.map ("test/assets/" ++)
-                |> Prelude.traverse
+                |> Async.mapConcurrently
                   ( \modulePath -> do
-                      parsed <-
-                        HVE.parse modulePath
-                          |> Expect.fromIO
-                      result <-
-                        parsed
-                          |> HVE.verify
-                          |> Expect.fromIO
-                      Expect.fromResult (Ok (HVE.moduleInfo parsed, result))
+                      parsed <- HVE.parse modulePath
+                      result <- HVE.verify parsed
+                      Prelude.pure (HVE.moduleInfo parsed, result)
                   )
+                |> Expect.fromIO
             contents <-
               withTempFile (\handle -> Reporter.Stdout.report handle results)
             contents
