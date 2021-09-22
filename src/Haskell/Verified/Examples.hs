@@ -46,7 +46,7 @@ verify Module {comments, moduleInfo} =
   withContext moduleInfo comments <| \maybeContext ->
     comments
       |> examples
-      |> Prelude.traverse (verifyExample moduleInfo maybeContext)
+      |> Async.mapConcurrently (verifyExample moduleInfo maybeContext)
 
 verifyExample :: ModuleInfo -> Maybe Context -> Example -> Prelude.IO ExampleResult
 verifyExample modInfo maybeContext example =
