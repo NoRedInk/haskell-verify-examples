@@ -45,8 +45,7 @@ import qualified Text.Read
 import qualified Prelude
 
 data Handler = Handler
-  { -- TODO smaller function in handler
-    eval :: ModuleInfo -> Maybe Context -> Prelude.String -> Task Error ExampleResult,
+  { eval :: ModuleInfo -> Maybe Context -> Prelude.String -> Task Error ExampleResult,
     parseFileWithComments ::
       Prelude.FilePath ->
       Task
@@ -209,7 +208,6 @@ evalIO moduleInfo maybeContext s = do
   interpreter <| do
     preload <- Hint.lift preloadPaths
 
-    -- TODO: Throw nice "unrecognized extension" error instead of ignoring here
     let (unknownLangs, langs) =
           languageExtensions moduleInfo
             |> List.map
