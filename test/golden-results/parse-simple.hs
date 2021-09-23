@@ -27,50 +27,15 @@ Module
         , packageDbs = []
         }
   , comments =
-      [ PlainTextComment
-          ( SrcSpanInfo
-              { srcInfoSpan = SrcSpan "test/assets/Simple.hs" 7 1 8 3
-              , srcInfoPoints = []
-              }
-          , " hello world\n"
-          )
+      [ CodeBlockComment
+          (VerifiedExample
+             (SrcSpan "test/assets/Simple.hs" 9 1 10 11) [ "test" , "==> 1" ])
       , CodeBlockComment
           (VerifiedExample
-             ( SrcSpanInfo
-                 { srcInfoSpan = SrcSpan "test/assets/Simple.hs" 9 1 10 11
-                 , srcInfoPoints = []
-                 }
-             , "test\n==> 1"
-             ))
-      , PlainTextComment
-          ( SrcSpanInfo
-              { srcInfoSpan = SrcSpan "test/assets/Simple.hs" 11 1 11 3
-              , srcInfoPoints = []
-              }
-          , ""
-          )
-      , CodeBlockComment
-          (VerifiedExample
-             ( SrcSpanInfo
-                 { srcInfoSpan = SrcSpan "test/assets/Simple.hs" 12 1 13 11
-                 , srcInfoPoints = []
-                 }
-             , "test + test\n==> 2"
-             ))
-      , PlainTextComment
-          ( SrcSpanInfo
-              { srcInfoSpan = SrcSpan "test/assets/Simple.hs" 14 1 14 3
-              , srcInfoPoints = []
-              }
-          , ""
-          )
+             (SrcSpan "test/assets/Simple.hs" 12 1 13 11)
+             [ "test + test" , "==> 2" ])
       , CodeBlockComment
           (UnverifiedExample
-             ( SrcSpanInfo
-                 { srcInfoSpan = SrcSpan "test/assets/Simple.hs" 15 1 15 17
-                 , srcInfoPoints = []
-                 }
-             , "test + test"
-             ))
+             (SrcSpan "test/assets/Simple.hs" 15 1 15 17) [ "test + test" ])
       ]
   }

@@ -1,5 +1,6 @@
 module Main (main) where
 
+import qualified Control.Concurrent.Async as Async
 import qualified Data.Text.IO
 import qualified Expect
 import qualified Haskell.Verified.Examples as HVE
@@ -33,7 +34,14 @@ tests =
                 |> Expect.fromIO
             result
               |> Debug.toString
-              |> Expect.equalToContentsOf "test/golden-results/parse-unverified-examples.hs"
+              |> Expect.equalToContentsOf "test/golden-results/parse-unverified-examples.hs",
+          test "parses context code" <| \() -> do
+            result <-
+              HVE.parse "test/assets/WithContext.hs"
+                |> Expect.fromIO
+            result
+              |> Debug.toString
+              |> Expect.equalToContentsOf "test/golden-results/parse-with-context.hs"
         ],
       describe
         "verifyExample"
@@ -43,6 +51,7 @@ tests =
               example
                 |> HVE.verifyExample
                   (HVE.shimModuleWithImports ["NriPrelude"])
+                  Nothing
                 |> Expect.fromIO
             result
               |> Debug.toString
@@ -53,6 +62,7 @@ tests =
               example
                 |> HVE.verifyExample
                   (HVE.shimModuleWithImports ["NriPrelude"])
+                  Nothing
                 |> Expect.fromIO
             result
               |> Debug.toString
@@ -71,12 +81,13 @@ tests =
                       ", 4",
                       "]"
                     ]
-                      |> Text.join "\n"
+                      |> Prelude.unlines
                       |> HVE.exampleFromText
               result <-
                 example
                   |> HVE.verifyExample
                     (HVE.shimModuleWithImports ["List", "NriPrelude"])
+                    Nothing
                   |> Expect.fromIO
               result
                 |> Debug.toString
@@ -94,12 +105,13 @@ tests =
                     ", 5",
                     "]"
                   ]
-                    |> Text.join "\n"
+                    |> Prelude.unlines
                     |> HVE.exampleFromText
             result <-
               example
                 |> HVE.verifyExample
                   (HVE.shimModuleWithImports ["List", "NriPrelude"])
+                  Nothing
                 |> Expect.fromIO
             result
               |> Debug.toString
@@ -114,17 +126,13 @@ tests =
             results <-
               assets
                 |> List.map ("test/assets/" ++)
-                |> Prelude.traverse
+                |> Async.mapConcurrently
                   ( \modulePath -> do
-                      parsed <-
-                        HVE.parse modulePath
-                          |> Expect.fromIO
-                      result <-
-                        parsed
-                          |> HVE.verify
-                          |> Expect.fromIO
-                      Expect.fromResult (Ok (HVE.moduleInfo parsed, result))
+                      parsed <- HVE.parse modulePath
+                      result <- HVE.verify parsed
+                      Prelude.pure (HVE.moduleInfo parsed, result)
                   )
+                |> Expect.fromIO
             contents <-
               withTempFile (\handle -> Reporter.Stdout.report handle results)
             contents

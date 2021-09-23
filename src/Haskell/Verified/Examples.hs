@@ -18,6 +18,8 @@ where
 
 import qualified Control.Concurrent.Async as Async
 import qualified Data.Foldable as Foldable
+import qualified Data.List
+import qualified Data.Text.IO
 import qualified HIE.Bios.Cradle
 import qualified HIE.Bios.Environment
 import qualified HIE.Bios.Flags
@@ -39,29 +41,27 @@ import qualified System.IO
 import qualified Text.Read
 import qualified Prelude
 
--- TODO imports need to support qualified and stuff. This is just a hack to see how things work so far.
--- We can use setImportsQ.
--- And obviously need to parse it.
---
 verify :: Module -> Prelude.IO (List ExampleResult)
-verify mod =
-  mod
-    |> comments
-    |> examples
-    |> Prelude.traverse (verifyExample (moduleInfo mod))
+verify Module {comments, moduleInfo} =
+  withContext moduleInfo comments <| \maybeContext ->
+    comments
+      |> examples
+      |> Async.mapConcurrently (verifyExample moduleInfo maybeContext)
 
-verifyExample :: ModuleInfo -> Example -> Prelude.IO ExampleResult
-verifyExample modInfo example =
+verifyExample :: ModuleInfo -> Maybe Context -> Example -> Prelude.IO ExampleResult
+verifyExample modInfo maybeContext example =
   case example of
-    VerifiedExample (_, code) -> do
-      result <- eval modInfo code
+    VerifiedExample _ code -> do
+      result <-
+        Prelude.unlines code
+          |> eval modInfo maybeContext
       case result of
         Prelude.Left err ->
           Prelude.pure (ExampleVerifyFailed example err)
         Prelude.Right execResult ->
           ExampleVerifySuccess example execResult
             |> Prelude.pure
-    UnverifiedExample (_, code) ->
+    UnverifiedExample _ code ->
       NoExampleResult
         |> ExampleVerifySuccess example
         |> Prelude.pure
@@ -121,8 +121,12 @@ makeImport importDecl =
     importToString (LHE.Syntax.IThingAll _ n) = getName n ++ "(..)"
     importToString (LHE.Syntax.IThingWith _ n ns) = getName n ++ "(" ++ (List.concat <| List.intersperse "," (List.map getCName ns)) ++ ")"
 
-eval :: ModuleInfo -> Text -> Prelude.IO (Prelude.Either Hint.InterpreterError Verified)
-eval moduleInfo s = do
+eval ::
+  ModuleInfo ->
+  Maybe Context ->
+  Prelude.String ->
+  Prelude.IO (Prelude.Either Hint.InterpreterError Verified)
+eval moduleInfo maybeContext s = do
   let modulePath = moduleFilePath moduleInfo
   let interpreter = case packageDbs moduleInfo of
         [] -> Hint.runInterpreter
@@ -136,25 +140,31 @@ eval moduleInfo s = do
     let searchPaths = List.map Text.toList <| importPaths moduleInfo
     Hint.set [Hint.languageExtensions Hint.:= langs, Hint.searchPath Hint.:= searchPaths]
 
-    Hint.loadModules
-      ( if modulePath == ""
-          then preload
-          else modulePath : preload
-      )
+    [ if modulePath == ""
+        then []
+        else [modulePath],
+      case maybeContext of
+        Nothing -> []
+        Just Context {contextModulePath} -> [contextModulePath],
+      preload
+      ]
+      |> List.concat
+      |> Hint.loadModules
 
     case moduleName moduleInfo of
       Just name -> Hint.setTopLevelModules [Text.toList name]
       Nothing -> Prelude.return ()
 
     let exampleImports =
-          List.map
-            makeSimpleImport
-            [ "Haskell.Verified.Examples.RunTime",
-              "Haskell.Verified.Examples.Verified"
-            ]
+          [ Just "Haskell.Verified.Examples.RunTime",
+            Just "Haskell.Verified.Examples.Verified",
+            Maybe.map contextModuleName maybeContext
+          ]
+            |> List.filterMap identity
+            |> List.map makeSimpleImport
 
     Hint.setImportsF (exampleImports ++ imports moduleInfo)
-    Hint.interpret (Text.toList s) (Hint.as :: Verified)
+    Hint.interpret s (Hint.as :: Verified)
 
 trimPrefix :: Text -> Text -> Maybe Text
 trimPrefix prefix text
@@ -170,9 +180,9 @@ getDefaultLanguageExtensions = List.filterMap <| trimPrefix "-X"
 getPackageDbs :: List Text -> List Text
 getPackageDbs options = List.concat [[l, r] | (l, r) <- Prelude.zip options (List.drop 1 options), l == "-package-db"]
 
-exampleFromText :: Text -> Example
+exampleFromText :: Prelude.String -> Example
 exampleFromText val =
-  toExample LHE.SrcLoc.noSrcSpan val
+  toExample emptySrcSpan (Prelude.lines val)
 
 parse :: Prelude.FilePath -> Prelude.IO Module
 parse path = do
@@ -214,9 +224,59 @@ examples =
   List.filterMap
     ( \c ->
         case c of
-          PlainTextComment _ -> Nothing
+          ContextBlockComment _ _ -> Nothing
           CodeBlockComment example -> Just example
     )
+
+contextBlocks :: List Comment -> List Prelude.String
+contextBlocks =
+  List.concatMap
+    ( \c ->
+        case c of
+          ContextBlockComment _ context -> context
+          CodeBlockComment _ -> []
+    )
+
+data Context = Context
+  { contextModulePath :: Prelude.FilePath,
+    contextModuleName :: Text
+  }
+
+withContext :: ModuleInfo -> List Comment -> (Maybe Context -> Prelude.IO a) -> Prelude.IO a
+withContext modInfo comments go = do
+  let contextModuleName = "HaskellVerifiedExamplesContext"
+  case contextBlocks comments of
+    [] -> go Nothing
+    xs ->
+      withTempFile
+        ( \path handle -> do
+            _ <- System.IO.hPutStrLn handle ("module " ++ Text.toList contextModuleName ++ " where")
+            _ <-
+              modInfo
+                |> imports
+                |> List.map renderImport
+                |> Prelude.traverse (System.IO.hPutStrLn handle)
+            xs
+              |> Prelude.unlines
+              |> System.IO.hPutStr handle
+            Prelude.pure ()
+        )
+        (\contextModulePath -> go (Just Context {contextModulePath, contextModuleName}))
+
+renderImport :: Hint.ModuleImport -> Prelude.String
+renderImport m =
+  Prelude.concat
+    [ "import ",
+      case Hint.modQual m of
+        Hint.NotQualified -> Hint.modName m
+        Hint.ImportAs q -> Hint.modName m ++ " as " ++ q
+        Hint.QualifiedAs Nothing -> "qualified " ++ Hint.modName m
+        Hint.QualifiedAs (Just q) -> "qualified " ++ Hint.modName m ++ " as " ++ q,
+      case Hint.modImp m of
+        Hint.NoImportList -> ""
+        Hint.ImportList l -> " (" ++ Data.List.intercalate "," l ++ ")"
+        Hint.HidingList l -> " hiding (" ++ Data.List.intercalate "," l ++ ")"
+    ]
 
 toModule ::
   ( LHE.Syntax.Module LHE.SrcLoc.SrcSpanInfo,
@@ -248,64 +308,87 @@ toModule parsed =
 toComments :: List LHE.Comments.Comment -> List Comment
 toComments cs =
   cs
-    |> mergeComments []
-    |> List.map
-      ( \(ct, LHE.Comments.Comment _ srcSpan val) ->
+    |> mergeComments [] False
+    |> List.filterMap
+      ( \(ct, comments) ->
           case ct of
+            PlainText -> Nothing
             CodeBlock ->
-              toExample
-                (LHE.SrcLoc.noInfoSpan srcSpan)
-                (Text.fromList val)
+              comments
+                |> List.map (commentValue >> Prelude.dropWhile (/= '>') >> Prelude.drop 2)
+                |> toExample (commentsSrcSpan comments)
                 |> CodeBlockComment
-            PlainText -> PlainTextComment (LHE.SrcLoc.noInfoSpan srcSpan, Text.fromList val)
+                |> Just
+            ContextBlock ->
+              comments
+                |> List.map commentValue
+                |> Data.List.tail
+                |> Data.List.init
+                |> List.map (Prelude.drop 1)
+                |> ContextBlockComment (commentsSrcSpan comments)
+                |> Just
       )
 
-data CommentType = CodeBlock | PlainText
-  deriving (Show)
+data CommentType = CodeBlock | PlainText | ContextBlock
+  deriving (Show, Eq)
 
-mergeComments :: List (CommentType, LHE.Comments.Comment) -> List LHE.Comments.Comment -> List (CommentType, LHE.Comments.Comment)
-mergeComments acc [] = List.reverse acc
-mergeComments [] (next : rest) =
-  mergeComments
-    [ case commentType next of
-        CodeBlock -> (CodeBlock, cleanCodeBlock next)
-        PlainText -> (PlainText, next)
-    ]
-    rest
-mergeComments (prev@(prevCT, prevComment) : acc) (next : rest) =
-  mergeComments
-    ( case (prevCT, commentType next) of
-        (CodeBlock, CodeBlock) -> (CodeBlock, concatComment prevComment (cleanCodeBlock next)) : acc
-        (PlainText, PlainText) -> (PlainText, concatComment prevComment next) : acc
-        (PlainText, CodeBlock) -> (CodeBlock, cleanCodeBlock next) : prev : acc
-        (CodeBlock, PlainText) -> (PlainText, next) : prev : acc
-    )
-    rest
-
-cleanCodeBlock :: LHE.Comments.Comment -> LHE.Comments.Comment
-cleanCodeBlock (LHE.Comments.Comment t s text) =
-  text
-    |> Prelude.drop 3
-    |> LHE.Comments.Comment t s
+mergeComments ::
+  List (CommentType, List LHE.Comments.Comment) ->
+  Bool ->
+  List LHE.Comments.Comment ->
+  List (CommentType, List LHE.Comments.Comment)
+mergeComments acc _ [] = List.reverse acc
+mergeComments acc isInContext (next : restNext) =
+  let nextCt = commentType next
+      stillInContext = if isInContext then nextCt /= ContextBlock else nextCt == ContextBlock
+      newAcc = case acc of
+        [] -> [(nextCt, [next])]
+        (prevCt, prev) : restPrev ->
+          if isInContext || prevCt == nextCt
+            then (prevCt, prev ++ [next]) : restPrev
+            else (nextCt, [next]) : acc
+   in mergeComments newAcc stillInContext restNext
 
 commentType :: LHE.Comments.Comment -> CommentType
 commentType (LHE.Comments.Comment _ _ text) =
-  if Text.startsWith " > " (Text.fromList text)
-    || Text.trim (Text.fromList text) == ">"
+  if hasArrow text
     then CodeBlock
-    else PlainText
+    else
+      if hasAt text
+        then ContextBlock
+        else PlainText
+
+hasAt text = Text.trim (Text.fromList text) == "@"
+
+hasArrow text =
+  Text.startsWith " > " (Text.fromList text)
+    || Text.trim (Text.fromList text) == ">"
 
 concatComment :: LHE.Comments.Comment -> LHE.Comments.Comment -> LHE.Comments.Comment
-concatComment (LHE.Comments.Comment _ srcSpanA a) (LHE.Comments.Comment _ srcSpanB b) =
+concatComment commentA@(LHE.Comments.Comment _ srcSpanA a) commentB@(LHE.Comments.Comment _ srcSpanB b) =
   LHE.Comments.Comment True (LHE.SrcLoc.mergeSrcSpan srcSpanA srcSpanB) (a ++ "\n" ++ b)
 
-toExample :: LHE.SrcLoc.SrcSpanInfo -> Text -> Example
-toExample srcLocInfo source =
-  case LHE.Lexer.lexTokenStream (Text.toList source) of
+commentValue :: LHE.Comments.Comment -> Prelude.String
+commentValue (LHE.Comments.Comment _ _ a) = a
+
+commentsSrcSpan :: List LHE.Comments.Comment -> LHE.SrcLoc.SrcSpan
+commentsSrcSpan [] = emptySrcSpan
+commentsSrcSpan (LHE.Comments.Comment _ first _ : rest) =
+  List.foldl
+    (\(LHE.Comments.Comment _ srcSpan _) acc -> LHE.SrcLoc.mergeSrcSpan acc srcSpan)
+    first
+    rest
+
+emptySrcSpan :: LHE.SrcLoc.SrcSpan
+emptySrcSpan = LHE.SrcLoc.mkSrcSpan LHE.SrcLoc.noLoc LHE.SrcLoc.noLoc
+
+toExample :: LHE.SrcLoc.SrcSpan -> List Prelude.String -> Example
+toExample srcSpan source =
+  case LHE.Lexer.lexTokenStream (Prelude.unlines source) of
     LHE.Parser.ParseOk tokens ->
       if Foldable.any ((== LHE.Lexer.VarSym "==>") << LHE.Lexer.unLoc) tokens
-        then VerifiedExample (srcLocInfo, source)
-        else UnverifiedExample (srcLocInfo, source)
+        then VerifiedExample srcSpan source
+        else UnverifiedExample srcSpan source
     LHE.Parser.ParseFailed _ msg ->
       let _ = Debug.log "msg" msg
        in Debug.todo "TODO"
@@ -336,3 +419,14 @@ report reporters results =
   ]
     |> List.filterMap identity
     |> Async.mapConcurrently_ identity
+
+withTempFile ::
+  (System.IO.FilePath -> System.IO.Handle -> Prelude.IO ()) ->
+  (Prelude.FilePath -> Prelude.IO a) ->
+  Prelude.IO a
+withTempFile before go = do
+  (path, handle) <-
+    System.IO.openTempFile "/tmp" "HaskellVerifiedExamples.hs"
+  _ <- before path handle
+  System.IO.hClose handle
+  go path

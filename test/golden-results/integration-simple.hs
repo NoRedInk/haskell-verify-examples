@@ -91,6 +91,27 @@ test/assets/UnverifiedExamples.hs:29
       In an equation for ‘e_112341’:
           e_112341 = [1, 2, 3, ....] |> map (+ 1) ==> True
 
+Examples of module WithContext unverified.
+
+test/assets/WithContext.hs:21
+[2m  16: --
+[m[2m  17: -- Examples:
+[m[2m  18: --
+[m[2m  19: -- > identity @(Maybe [Char]) test ==> result
+[m[2m  20: --
+[m✗ 21: -- > Just "b" ==> result
+[2m  22: test :: Maybe [Char]
+[m[2m  23: test = Just "a"
+[m[2m  24: 
+[mThe example was incorrect and couldn't be verified.
+        ▼
+"Just \"b\""
+╷
+│ ==>
+╵
+"Just \"a\""
+        ▲
+
 Examples unverified.
 
 test/assets/Headless.hs:3
@@ -109,11 +130,12 @@ test/assets/Headless.hs:3
  ▲
 
 [4mNot all examples verified![m
-Verified: 14
-Unverified: 3
+Verified: 15
+Unverified: 4
   In these files:
   * test/assets/Headless.hs
   * test/assets/UnverifiedExamples.hs
+  * test/assets/WithContext.hs
 No examples: 2
   In these files:
   * test/assets/Simple.hs
