@@ -24,6 +24,7 @@ import qualified Prelude
 data Error
   = ParseFailed Prelude.FilePath LHE.SrcLoc.SrcLoc Prelude.String
   | CradleFailed HIE.Bios.Types.CradleError
+  | UnsupportedModuleType
   deriving (Show)
 
 data Module = Module

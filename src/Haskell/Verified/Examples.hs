@@ -257,7 +257,7 @@ exampleFromText val =
 parse :: Handler -> Prelude.FilePath -> Task Error Module
 parse handler path = do
   parsed <- (parseFileWithComments handler) path
-  Task.succeed (toModule parsed)
+  toModule parsed
 
 -- Parses the file for imports / extensions / comments, but also will attempt to find the cradle for project default extensions and module directories
 tryLoadImplicitCradle :: Handler -> Prelude.FilePath -> Module -> Task Error Module
@@ -337,28 +337,28 @@ toModule ::
   ( LHE.Syntax.Module LHE.SrcLoc.SrcSpanInfo,
     List LHE.Comments.Comment
   ) ->
-  Module
+  Task Error Module
 toModule parsed =
   case parsed of
-    (LHE.Syntax.Module moduleSource moduleHead pragmas imports _, cs) ->
+    (LHE.Syntax.Module moduleSource moduleHead pragmas imports _, cs) -> do
       let moduleName = case moduleHead of
             (Just (LHE.Syntax.ModuleHead _ (LHE.Syntax.ModuleName _ name) _ _)) -> Just <| Text.fromList name
             Nothing -> Nothing
           languageExtensions = [Text.fromList n | LHE.Syntax.LanguagePragma _ ns <- pragmas, (LHE.Syntax.Ident _ n) <- ns]
-       in Module
-            { moduleInfo =
-                ModuleInfo
-                  { moduleName,
-                    moduleSource,
-                    languageExtensions,
-                    imports = List.map makeImport imports,
-                    importPaths = [],
-                    packageDbs = []
-                  },
-              comments = toComments cs
-            }
-    _ ->
-      Debug.todo "TODO unsupported module type"
+      Task.succeed
+        Module
+          { moduleInfo =
+              ModuleInfo
+                { moduleName,
+                  moduleSource,
+                  languageExtensions,
+                  imports = List.map makeImport imports,
+                  importPaths = [],
+                  packageDbs = []
+                },
+            comments = toComments cs
+          }
+    _ -> Task.fail UnsupportedModuleType
 
 toComments :: List LHE.Comments.Comment -> List Comment
 toComments cs =
