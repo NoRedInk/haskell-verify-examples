@@ -4,7 +4,6 @@ import qualified Control.Monad
 import qualified Data.Foldable
 import qualified Haskell.Verified.Examples as HVE
 import NriPrelude
-import qualified Platform
 import qualified System.Directory
 import qualified System.Environment
 import System.FilePath.Find ((&&?), (==?))
@@ -13,7 +12,7 @@ import qualified Prelude
 
 main :: Prelude.IO ()
 main = do
-  doAnything <- Platform.doAnythingHandler
+  handler <- HVE.handler
   logHandler <- Platform.silentHandler
   cwd <- System.Directory.getCurrentDirectory
   params <- System.Environment.getArgs
@@ -25,9 +24,9 @@ main = do
       |> List.map
         ( \modulePath -> do
             parsed <-
-              HVE.parse doAnything modulePath
-                |> Task.andThen (HVE.tryLoadImplicitCradle doAnything modulePath)
-            results <- HVE.verify doAnything parsed
+              HVE.parse handler modulePath
+                |> Task.andThen (HVE.tryLoadImplicitCradle handler modulePath)
+            results <- HVE.verify handler parsed
             Task.succeed (HVE.moduleInfo parsed, results)
         )
       |> Task.parallel

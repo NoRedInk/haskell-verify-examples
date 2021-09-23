@@ -1,5 +1,6 @@
 module Haskell.Verified.Examples
-  ( parse,
+  ( handler,
+    parse,
     tryLoadImplicitCradle,
     Module (..),
     ModuleInfo (..),
@@ -46,19 +47,26 @@ data Error
   = ParseFailed Prelude.FilePath LHE.SrcLoc.SrcLoc Prelude.String
   deriving (Show)
 
+newtype Handler = Handler {doAnything :: Platform.DoAnythingHandler}
+
+handler :: Prelude.IO Handler
+handler = do
+  doAnything <- Platform.doAnythingHandler
+  Prelude.pure Handler {doAnything}
+
 -- TODO create actual HVE.Handler that contains those IOs
-verify :: Platform.DoAnythingHandler -> Module -> Task Error (List ExampleResult)
-verify doAnything Module {comments, moduleInfo} =
-  withContext doAnything moduleInfo comments <| \maybeContext ->
+verify :: Handler -> Module -> Task Error (List ExampleResult)
+verify handler Module {comments, moduleInfo} =
+  withContext handler moduleInfo comments <| \maybeContext ->
     comments
       |> examples
-      |> List.map (verifyExample doAnything moduleInfo maybeContext)
+      |> List.map (verifyExample handler moduleInfo maybeContext)
       |> Task.parallel
 
-verifyExample :: Platform.DoAnythingHandler -> ModuleInfo -> Maybe Context -> Example -> Task Error ExampleResult
-verifyExample doAnything modInfo maybeContext example =
+verifyExample :: Handler -> ModuleInfo -> Maybe Context -> Example -> Task Error ExampleResult
+verifyExample handler modInfo maybeContext example =
   -- TODO use task
-  Platform.doAnything doAnything
+  Platform.doAnything (doAnything handler)
     <| map Ok
     <| case example of
       VerifiedExample _ code -> do
@@ -194,12 +202,12 @@ exampleFromText :: Prelude.String -> Example
 exampleFromText val =
   toExample emptySrcSpan (Prelude.lines val)
 
-parse :: Platform.DoAnythingHandler -> Prelude.FilePath -> Task Error Module
-parse doAnything path = do
+parse :: Handler -> Prelude.FilePath -> Task Error Module
+parse handler path = do
   parsed <-
     parseFileWithComments path
       |> map Ok
-      |> Platform.doAnything doAnything
+      |> Platform.doAnything (doAnything handler)
   case parsed of
     LHE.Parser.ParseOk ok -> Task.succeed (toModule ok)
     LHE.Parser.ParseFailed x msg ->
@@ -207,9 +215,9 @@ parse doAnything path = do
         |> Task.fail
 
 -- Parses the file for imports / extensions / comments, but also will attempt to find the cradle for project default extensions and module directories
-tryLoadImplicitCradle :: Platform.DoAnythingHandler -> Prelude.FilePath -> Module -> Task Error Module
-tryLoadImplicitCradle doAnything path mod =
-  Platform.doAnything doAnything <| map Ok <| do
+tryLoadImplicitCradle :: Handler -> Prelude.FilePath -> Module -> Task Error Module
+tryLoadImplicitCradle handler path mod =
+  Platform.doAnything (doAnything handler) <| map Ok <| do
     cradle <- HIE.Bios.Cradle.loadImplicitCradle path
     cradleResult <- HIE.Bios.Flags.getCompilerOptions path cradle
 
@@ -258,17 +266,17 @@ data Context = Context
   }
 
 withContext ::
-  Platform.DoAnythingHandler ->
+  Handler ->
   ModuleInfo ->
   List Comment ->
   (Maybe Context -> Task err a) ->
   Task err a
-withContext doAnything modInfo comments go = do
+withContext handler modInfo comments go = do
   let contextModuleName = "HaskellVerifiedExamplesContext"
   case contextBlocks comments of
     [] -> go Nothing
     xs ->
-      Platform.doAnything doAnything
+      Platform.doAnything (doAnything handler)
         <| withTempFile
           ( \path handle -> do
               _ <- System.IO.hPutStrLn handle ("module " ++ Text.toList contextModuleName ++ " where")
