@@ -1,6 +1,7 @@
 module Haskell.Verified.Examples.Internal where
 
 import qualified Control.Concurrent.Async as Async
+import qualified Control.Exception.Safe as Exception
 import qualified Data.Foldable as Foldable
 import qualified HIE.Bios.Cradle
 import qualified HIE.Bios.Environment
@@ -25,7 +26,14 @@ data Error
   = ParseFailed LHE.SrcLoc.SrcLoc Prelude.String
   | CradleFailed HIE.Bios.Types.CradleError
   | UnsupportedModuleType
+  | EvalFailed EvalError
   deriving (Show)
+
+data EvalError
+  = UnkownLanguageExtension (List Text)
+  deriving (Show)
+
+instance Exception.Exception EvalError
 
 data Module = Module
   { moduleInfo :: ModuleInfo,

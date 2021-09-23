@@ -1,6 +1,7 @@
 -- | Module for presenting example results on the console.
 module Haskell.Verified.Examples.Reporter.Stdout
   ( report,
+    reportError,
   )
 where
 
@@ -40,6 +41,16 @@ report handle results = do
           |> examplesSummary
           |> renderSummary
   (separateBlocks perModuleResults ++ [chunk "\n\n"] ++ summary)
+    |> Text.Colour.hPutChunksWith terminalCapabilities handle
+  System.IO.hFlush handle
+
+reportError :: System.IO.Handle -> Error -> Prelude.IO ()
+reportError handle err = do
+  terminalCapabilities <- Text.Colour.Capabilities.getTerminalCapabilitiesFromHandle handle
+  err
+    |> Debug.toString
+    |> chunk
+    |> List.singleton
     |> Text.Colour.hPutChunksWith terminalCapabilities handle
   System.IO.hFlush handle
 

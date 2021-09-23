@@ -139,6 +139,7 @@ tests =
                 |> Expect.fromIO
             results <-
               assets
+                |> List.filter (Text.fromList >> Text.startsWith "Fails" >> not)
                 |> List.map ("test/assets/" ++)
                 |> List.map
                   ( \modulePath -> do
@@ -151,7 +152,28 @@ tests =
             contents <-
               withTempFile (\handle -> Reporter.Stdout.report handle results)
             contents
-              |> Expect.equalToContentsOf "test/golden-results/integration-simple.hs"
+              |> Expect.equalToContentsOf "test/golden-results/integration-simple.hs",
+          test "failing examples" <| \() -> do
+            handler <- Expect.fromIO HVE.handler
+            assets <-
+              Directory.listDirectory "test/assets"
+                |> Expect.fromIO
+            errors <-
+              assets
+                |> List.filter (Text.fromList >> Text.startsWith "Fails")
+                |> List.map ("test/assets/" ++)
+                |> List.map
+                  ( \modulePath -> do
+                      parsed <- HVE.parse handler modulePath
+                      result <- HVE.verify handler parsed
+                      Task.succeed ()
+                  )
+                |> Task.parallel
+                |> Expect.fails
+            contents <-
+              withTempFile (\handle -> Reporter.Stdout.reportError handle errors)
+            contents
+              |> Expect.equalToContentsOf "test/golden-results/integration-fails.hs"
         ]
     ]
 

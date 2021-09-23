@@ -18,6 +18,7 @@ module Haskell.Verified.Examples
 where
 
 import qualified Control.Concurrent.Async as Async
+import qualified Control.Exception.Safe as Exception
 import qualified Data.Foldable as Foldable
 import qualified Data.List
 import qualified Data.Text.IO
@@ -44,7 +45,8 @@ import qualified Text.Read
 import qualified Prelude
 
 data Handler = Handler
-  { eval :: ModuleInfo -> Maybe Context -> Prelude.String -> Task Error ExampleResult,
+  { -- TODO smaller function in handler
+    eval :: ModuleInfo -> Maybe Context -> Prelude.String -> Task Error ExampleResult,
     parseFileWithComments ::
       Prelude.FilePath ->
       Task
@@ -68,6 +70,8 @@ handler = do
   let eval a b c =
         evalIO a b c
           |> map Ok
+          |> Exception.handle
+            (\(err :: EvalError) -> Prelude.pure (Err (EvalFailed err)))
           |> Platform.doAnything doAnything
   let parseFileWithComments path =
         parseFileWithCommentsIO path
@@ -206,7 +210,18 @@ evalIO moduleInfo maybeContext s = do
     preload <- Hint.lift preloadPaths
 
     -- TODO: Throw nice "unrecognized extension" error instead of ignoring here
-    let langs = List.filterMap (\ex -> Text.Read.readMaybe <| Text.toList ex) (languageExtensions moduleInfo)
+    let (unknownLangs, langs) =
+          languageExtensions moduleInfo
+            |> List.map
+              ( \ex -> case Text.Read.readMaybe (Text.toList ex) of
+                  Just lang -> (Nothing, Just lang)
+                  Nothing -> (Just ex, Nothing)
+              )
+            |> List.unzip
+            |> Tuple.mapBoth (List.filterMap identity) (List.filterMap identity)
+    if List.isEmpty unknownLangs
+      then Prelude.pure ()
+      else Exception.throwIO (UnkownLanguageExtension unknownLangs)
     let searchPaths = List.map Text.toList <| importPaths moduleInfo
     Hint.set [Hint.languageExtensions Hint.:= langs, Hint.searchPath Hint.:= searchPaths]
 
