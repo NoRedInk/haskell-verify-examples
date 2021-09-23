@@ -13,6 +13,7 @@ module Haskell.Verified.Examples
     ExampleResult (..),
     Reporter (..),
     report,
+    reportError,
     shimModuleWithImports,
   )
 where
@@ -493,6 +494,15 @@ report :: List Reporter -> List (ModuleInfo, List (Example, ExampleResult)) -> P
 report reporters results =
   [ if List.member Stdout reporters
       then Just (Reporter.Stdout.report System.IO.stdout results)
+      else Nothing
+  ]
+    |> List.filterMap identity
+    |> Async.mapConcurrently_ identity
+
+reportError :: List Reporter -> Error -> Prelude.IO ()
+reportError reporters err =
+  [ if List.member Stdout reporters
+      then Just (Reporter.Stdout.reportError System.IO.stdout err)
       else Nothing
   ]
     |> List.filterMap identity

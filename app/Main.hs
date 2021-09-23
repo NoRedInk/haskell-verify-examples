@@ -33,9 +33,7 @@ main = do
       |> Task.attempt logHandler
   case results of
     Ok res -> HVE.report [HVE.Stdout] res
-    Err err ->
-      let _ = Debug.log "ERR TODO Handle nicely" err
-       in Prelude.pure ()
+    Err err -> HVE.reportError [HVE.Stdout] err
 
 noRCS :: Find.RecursionPredicate
 noRCS =
