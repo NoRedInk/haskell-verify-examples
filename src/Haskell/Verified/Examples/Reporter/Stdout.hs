@@ -140,7 +140,9 @@ renderExampleWithSrc terminalWidth contents result =
 renderExample :: Int -> (Example, ExampleResult) -> List Chunk
 renderExample _ (example, ExampleVerifyFailed err) =
   case err of
-    UnkownLanguageExtension exts -> [] -- TODO
+    UnkownLanguageExtension exts ->
+      chunk "Unknown extensions:\n" :
+      List.map (\ext -> chunk ("* " ++ ext)) exts
     InterpreterError (Hint.UnknownError unknownError) ->
       [ chunk "Unknown error:\n",
         chunk <| Text.fromList unknownError
