@@ -43,46 +43,40 @@ import qualified System.IO
 import qualified Text.Read
 import qualified Prelude
 
-data Error
-  = ParseFailed Prelude.FilePath LHE.SrcLoc.SrcLoc Prelude.String
-  deriving (Show)
-
-newtype Handler = Handler {doAnything :: Platform.DoAnythingHandler}
+data Handler = Handler
+  { doAnything :: Platform.DoAnythingHandler,
+    eval :: ModuleInfo -> Maybe Context -> Prelude.String -> Task Error ExampleResult
+  }
 
 handler :: Prelude.IO Handler
 handler = do
   doAnything <- Platform.doAnythingHandler
-  Prelude.pure Handler {doAnything}
+  let eval a b c =
+        evalIO a b c
+          |> map Ok
+          |> Platform.doAnything doAnything
+  Prelude.pure Handler {doAnything, eval}
 
--- TODO create actual HVE.Handler that contains those IOs
-verify :: Handler -> Module -> Task Error (List ExampleResult)
+verify :: Handler -> Module -> Task Error (List (Example, ExampleResult))
 verify handler Module {comments, moduleInfo} =
   withContext handler moduleInfo comments <| \maybeContext ->
     comments
       |> examples
-      |> List.map (verifyExample handler moduleInfo maybeContext)
+      |> List.map
+        ( \example ->
+            verifyExample handler moduleInfo maybeContext example
+              |> Task.map ((,) example)
+        )
       |> Task.parallel
 
 verifyExample :: Handler -> ModuleInfo -> Maybe Context -> Example -> Task Error ExampleResult
 verifyExample handler modInfo maybeContext example =
-  -- TODO use task
-  Platform.doAnything (doAnything handler)
-    <| map Ok
-    <| case example of
-      VerifiedExample _ code -> do
-        result <-
-          Prelude.unlines code
-            |> eval modInfo maybeContext
-        case result of
-          Prelude.Left err ->
-            Prelude.pure (ExampleVerifyFailed example err)
-          Prelude.Right execResult ->
-            ExampleVerifySuccess example execResult
-              |> Prelude.pure
-      UnverifiedExample _ code ->
-        NoExampleResult
-          |> ExampleVerifySuccess example
-          |> Prelude.pure
+  case example of
+    VerifiedExample _ code -> do
+      Prelude.unlines code
+        |> (eval handler) modInfo maybeContext
+    UnverifiedExample _ code ->
+      Task.succeed (ExampleVerifySuccess NoExampleResult)
 
 preloadPaths :: Prelude.IO (List Prelude.FilePath)
 preloadPaths = Prelude.traverse DataPath.getDataFileName paths
@@ -139,17 +133,22 @@ makeImport importDecl =
     importToString (LHE.Syntax.IThingAll _ n) = getName n ++ "(..)"
     importToString (LHE.Syntax.IThingWith _ n ns) = getName n ++ "(" ++ (List.concat <| List.intersperse "," (List.map getCName ns)) ++ ")"
 
-eval ::
+evalIO ::
   ModuleInfo ->
   Maybe Context ->
   Prelude.String ->
-  Prelude.IO (Prelude.Either Hint.InterpreterError Verified)
-eval moduleInfo maybeContext s = do
+  Prelude.IO ExampleResult
+evalIO moduleInfo maybeContext s = do
   let modulePath = moduleFilePath moduleInfo
-  let interpreter = case packageDbs moduleInfo of
-        [] -> Hint.runInterpreter
-        _ -> Hint.Unsafe.unsafeRunInterpreterWithArgs <| List.map Text.toList <| packageDbs moduleInfo
-
+  let interpreter =
+        case packageDbs moduleInfo of
+          [] -> Hint.runInterpreter
+          _ -> Hint.Unsafe.unsafeRunInterpreterWithArgs <| List.map Text.toList <| packageDbs moduleInfo
+          >> map
+            ( \case
+                Prelude.Left err -> ExampleVerifyFailed err
+                Prelude.Right ok -> ExampleVerifySuccess ok
+            )
   interpreter <| do
     preload <- Hint.lift preloadPaths
 
@@ -444,7 +443,7 @@ data Reporter
   | LogFile
   deriving (Eq)
 
-report :: List Reporter -> List (ModuleInfo, List ExampleResult) -> Prelude.IO ()
+report :: List Reporter -> List (ModuleInfo, List (Example, ExampleResult)) -> Prelude.IO ()
 report reporters results =
   [ if List.member Stdout reporters
       then Just (Reporter.Stdout.report System.IO.stdout results)

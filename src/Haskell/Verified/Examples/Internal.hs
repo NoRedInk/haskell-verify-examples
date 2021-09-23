@@ -21,6 +21,10 @@ import qualified System.IO
 import qualified Text.Read
 import qualified Prelude
 
+data Error
+  = ParseFailed Prelude.FilePath LHE.SrcLoc.SrcLoc Prelude.String
+  deriving (Show)
+
 data Module = Module
   { moduleInfo :: ModuleInfo,
     comments :: List Comment
@@ -52,21 +56,17 @@ exampleSrcSpan (VerifiedExample span _) = span
 exampleSrcSpan (UnverifiedExample span _) = span
 
 data ExampleResult
-  = ExampleVerifySuccess Example Verified
-  | ExampleVerifyFailed Example Hint.InterpreterError
+  = ExampleVerifySuccess Verified
+  | ExampleVerifyFailed Hint.InterpreterError
   deriving (Show)
 
 examplesVerified :: List ExampleResult -> Bool
 examplesVerified = List.all exampleVerified
 
 exampleVerified :: ExampleResult -> Bool
-exampleVerified (ExampleVerifySuccess _ Verified) = True
-exampleVerified (ExampleVerifySuccess _ _) = False
-exampleVerified (ExampleVerifyFailed _ _) = False
-
-exampleFromResult :: ExampleResult -> Example
-exampleFromResult (ExampleVerifySuccess example _) = example
-exampleFromResult (ExampleVerifyFailed example _) = example
+exampleVerified (ExampleVerifySuccess Verified) = True
+exampleVerified (ExampleVerifySuccess _) = False
+exampleVerified (ExampleVerifyFailed _) = False
 
 moduleFilePath :: ModuleInfo -> Prelude.FilePath
 moduleFilePath =
