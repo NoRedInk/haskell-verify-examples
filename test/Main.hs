@@ -49,7 +49,7 @@ tests =
       describe
         "verifyExample"
         [ test "verfies an example when it succeeds" <| \() -> do
-            let example = HVE.exampleFromText "1 + 1 ==> 2"
+            example <- Expect.fromResult (HVE.exampleFromText "1 + 1 ==> 2")
             handler <- Expect.fromIO HVE.handler
             result <-
               example
@@ -62,7 +62,7 @@ tests =
               |> Debug.toString
               |> Expect.equalToContentsOf "test/golden-results/verifyExample-verified.hs",
           test "verfies an example when it fails" <| \() -> do
-            let example = HVE.exampleFromText "1 + 1 ==> 3"
+            example <- Expect.fromResult (HVE.exampleFromText "1 + 1 ==> 3")
             handler <- Expect.fromIO HVE.handler
             result <-
               example
@@ -77,20 +77,21 @@ tests =
           test "verfies multiline example (succeeds)" <| \() ->
             do
               handler <- Expect.fromIO HVE.handler
-              let example =
-                    [ "[ 1",
-                      ", 2",
-                      ", 3",
-                      "]",
-                      "|> List.map (+ 1)",
-                      "==>",
-                      "[ 2",
-                      ", 3",
-                      ", 4",
-                      "]"
-                    ]
-                      |> Prelude.unlines
-                      |> HVE.exampleFromText
+              example <-
+                [ "[ 1",
+                  ", 2",
+                  ", 3",
+                  "]",
+                  "|> List.map (+ 1)",
+                  "==>",
+                  "[ 2",
+                  ", 3",
+                  ", 4",
+                  "]"
+                  ]
+                  |> Prelude.unlines
+                  |> HVE.exampleFromText
+                  |> Expect.fromResult
               result <-
                 example
                   |> HVE.verifyExample
@@ -103,20 +104,21 @@ tests =
                 |> Expect.equalToContentsOf "test/golden-results/verifyExample-multiline-verified.hs",
           test "verfies multiline example (fails)" <| \() -> do
             handler <- Expect.fromIO HVE.handler
-            let example =
-                  [ "[ 1",
-                    ", 2",
-                    ", 3",
-                    "]",
-                    "|> List.map (+ 1)",
-                    "==>",
-                    "[ 2",
-                    ", 3",
-                    ", 5",
-                    "]"
-                  ]
-                    |> Prelude.unlines
-                    |> HVE.exampleFromText
+            example <-
+              [ "[ 1",
+                ", 2",
+                ", 3",
+                "]",
+                "|> List.map (+ 1)",
+                "==>",
+                "[ 2",
+                ", 3",
+                ", 5",
+                "]"
+                ]
+                |> Prelude.unlines
+                |> HVE.exampleFromText
+                |> Expect.fromResult
             result <-
               example
                 |> HVE.verifyExample

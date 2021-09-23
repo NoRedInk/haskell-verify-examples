@@ -22,7 +22,7 @@ import qualified Text.Read
 import qualified Prelude
 
 data Error
-  = ParseFailed Prelude.FilePath LHE.SrcLoc.SrcLoc Prelude.String
+  = ParseFailed LHE.SrcLoc.SrcLoc Prelude.String
   | CradleFailed HIE.Bios.Types.CradleError
   | UnsupportedModuleType
   deriving (Show)
@@ -73,3 +73,6 @@ exampleVerified (ExampleVerifyFailed _) = False
 moduleFilePath :: ModuleInfo -> Prelude.FilePath
 moduleFilePath =
   LHE.SrcLoc.srcSpanFilename << LHE.SrcLoc.srcInfoSpan << moduleSource
+
+combineResults :: List (Result x a) -> Result x (List a)
+combineResults = List.foldr (Result.map2 (:)) (Ok [])

@@ -74,7 +74,7 @@ handler = do
           |> map
             ( \case
                 LHE.Parser.ParseOk ok -> Ok ok
-                LHE.Parser.ParseFailed x msg -> Err (ParseFailed path x msg)
+                LHE.Parser.ParseFailed x msg -> Err (ParseFailed x msg)
             )
           |> Platform.doAnything doAnything
   let loadImplicitCradle p =
@@ -250,7 +250,7 @@ getDefaultLanguageExtensions = List.filterMap <| trimPrefix "-X"
 getPackageDbs :: List Text -> List Text
 getPackageDbs options = List.concat [[l, r] | (l, r) <- Prelude.zip options (List.drop 1 options), l == "-package-db"]
 
-exampleFromText :: Prelude.String -> Example
+exampleFromText :: Prelude.String -> Result Error Example
 exampleFromText val =
   toExample emptySrcSpan (Prelude.lines val)
 
@@ -345,6 +345,11 @@ toModule parsed =
             (Just (LHE.Syntax.ModuleHead _ (LHE.Syntax.ModuleName _ name) _ _)) -> Just <| Text.fromList name
             Nothing -> Nothing
           languageExtensions = [Text.fromList n | LHE.Syntax.LanguagePragma _ ns <- pragmas, (LHE.Syntax.Ident _ n) <- ns]
+      comments <-
+        toComments cs
+          |> \case
+            Ok ok -> Task.succeed ok
+            Err err -> Task.fail err
       Task.succeed
         Module
           { moduleInfo =
@@ -356,11 +361,11 @@ toModule parsed =
                   importPaths = [],
                   packageDbs = []
                 },
-            comments = toComments cs
+            comments
           }
     _ -> Task.fail UnsupportedModuleType
 
-toComments :: List LHE.Comments.Comment -> List Comment
+toComments :: List LHE.Comments.Comment -> Result Error (List Comment)
 toComments cs =
   cs
     |> mergeComments [] False
@@ -372,7 +377,7 @@ toComments cs =
               comments
                 |> List.map (commentValue >> Prelude.dropWhile (/= '>') >> Prelude.drop 2)
                 |> toExample (commentsSrcSpan comments)
-                |> CodeBlockComment
+                |> Result.map CodeBlockComment
                 |> Just
             ContextBlock ->
               comments
@@ -381,8 +386,10 @@ toComments cs =
                 |> Data.List.init
                 |> List.map (Prelude.drop 1)
                 |> ContextBlockComment (commentsSrcSpan comments)
+                |> Ok
                 |> Just
       )
+    |> combineResults
 
 data CommentType = CodeBlock | PlainText | ContextBlock
   deriving (Show, Eq)
@@ -437,16 +444,16 @@ commentsSrcSpan (LHE.Comments.Comment _ first _ : rest) =
 emptySrcSpan :: LHE.SrcLoc.SrcSpan
 emptySrcSpan = LHE.SrcLoc.mkSrcSpan LHE.SrcLoc.noLoc LHE.SrcLoc.noLoc
 
-toExample :: LHE.SrcLoc.SrcSpan -> List Prelude.String -> Example
+toExample :: LHE.SrcLoc.SrcSpan -> List Prelude.String -> Result Error Example
 toExample srcSpan source =
   case LHE.Lexer.lexTokenStream (Prelude.unlines source) of
     LHE.Parser.ParseOk tokens ->
-      if Foldable.any ((== LHE.Lexer.VarSym "==>") << LHE.Lexer.unLoc) tokens
-        then VerifiedExample srcSpan source
-        else UnverifiedExample srcSpan source
-    LHE.Parser.ParseFailed _ msg ->
-      let _ = Debug.log "msg" msg
-       in Debug.todo "TODO"
+      Ok
+        <| if Foldable.any ((== LHE.Lexer.VarSym "==>") << LHE.Lexer.unLoc) tokens
+          then VerifiedExample srcSpan source
+          else UnverifiedExample srcSpan source
+    LHE.Parser.ParseFailed srcLoc msg ->
+      Err (ParseFailed srcLoc msg)
 
 parseFileWithCommentsIO ::
   Prelude.FilePath ->
