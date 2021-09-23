@@ -31,6 +31,7 @@ data Error
 
 data EvalError
   = UnkownLanguageExtension (List Text)
+  | InterpreterError Hint.InterpreterError
   deriving (Show)
 
 instance Exception.Exception EvalError
@@ -67,7 +68,7 @@ exampleSrcSpan (UnverifiedExample span _) = span
 
 data ExampleResult
   = ExampleVerifySuccess Verified
-  | ExampleVerifyFailed Hint.InterpreterError
+  | ExampleVerifyFailed EvalError
   deriving (Show)
 
 examplesVerified :: List ExampleResult -> Bool

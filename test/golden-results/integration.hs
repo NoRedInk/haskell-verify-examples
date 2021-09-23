@@ -1,6 +1,6 @@
 Examples of module Simple unverified.
 
-test/assets/passing/Simple.hs:15
+test/assets/Simple.hs:15
 [2m  10: -- > ==> 1
 [m[2m  11: --
 [m[2m  12: -- > test + test
@@ -13,7 +13,7 @@ test/assets/passing/Simple.hs:15
 
 Examples of module UnverifiedExamples unverified.
 
-test/assets/passing/UnverifiedExamples.hs:12
+test/assets/UnverifiedExamples.hs:12
 [2m  7: -- hello world
 [m[2m  8: --
 [m[2m  9: -- > test
@@ -28,7 +28,7 @@ test/assets/passing/UnverifiedExamples.hs:12
 [mNo expected result for example.
 
 
-test/assets/passing/UnverifiedExamples.hs:14
+test/assets/UnverifiedExamples.hs:14
 [2m  9: -- > test
 [m[2m  10: -- > ==> 1
 [m[2m  11: --
@@ -50,7 +50,7 @@ test/assets/passing/UnverifiedExamples.hs:14
  ▲
 
 
-test/assets/passing/UnverifiedExamples.hs:20
+test/assets/UnverifiedExamples.hs:20
 [2m  15: -- > ==> 3
 [m[2m  16: test = 1
 [m[2m  17: 
@@ -71,7 +71,7 @@ test/assets/passing/UnverifiedExamples.hs:20
 "[2,4,5]"
 
 
-test/assets/passing/UnverifiedExamples.hs:29
+test/assets/UnverifiedExamples.hs:29
 [2m  24: -- > ] |> map (+ 1)
 [m[2m  25: -- > ==> [ 2, 4, 5 ]
 [m[2m  26: 
@@ -93,7 +93,7 @@ test/assets/passing/UnverifiedExamples.hs:29
 
 Examples of module WithContext unverified.
 
-test/assets/passing/WithContext.hs:21
+test/assets/WithContext.hs:21
 [2m  16: --
 [m[2m  17: -- Examples:
 [m[2m  18: --
@@ -112,9 +112,26 @@ test/assets/passing/WithContext.hs:21
 "Just \"a\""
         ▲
 
+Examples of module InterpreterError unverified.
+
+test/assets/InterpreterError.hs:7
+[2m  2: 
+[m[2m  3: import Prelude
+[m[2m  4: 
+[m[2m  5: -- TypeApplications
+[m[2m  6: --
+[m✗ 7: -- > test ==> testx
+[2m  8: test :: Maybe [Char]
+[m[2m  9: test = Just "a"
+[m[2m  10: 
+[mThe example doesn't compile:
+<interactive>:2:10: error:
+    • Variable not in scope: testx :: Maybe [Char]
+    • Perhaps you meant ‘test’ (line 9)
+
 Examples unverified.
 
-test/assets/passing/Headless.hs:3
+test/assets/Headless.hs:3
 [2m  -2: -- > 1 ==> 1
 [m[2m  -1: --
 [m[2m  0: -- > 1 ==> 2
@@ -129,17 +146,22 @@ test/assets/passing/Headless.hs:3
 "2"
  ▲
 
+Examples of module UnkownLanguageExtension unverified.
+
+
 [4mNot all examples verified![m
 Verified: 15
 Unverified: 4
   In these files:
-  * test/assets/passing/Headless.hs
-  * test/assets/passing/UnverifiedExamples.hs
-  * test/assets/passing/WithContext.hs
+  * test/assets/Headless.hs
+  * test/assets/UnverifiedExamples.hs
+  * test/assets/WithContext.hs
 No examples: 2
   In these files:
-  * test/assets/passing/Simple.hs
-  * test/assets/passing/UnverifiedExamples.hs
-Evaluation failed: 1
+  * test/assets/Simple.hs
+  * test/assets/UnverifiedExamples.hs
+Evaluation failed: 3
   In these files:
-  * test/assets/passing/UnverifiedExamples.hs
+  * test/assets/InterpreterError.hs
+  * test/assets/UnknownLanguageExtensions.hs
+  * test/assets/UnverifiedExamples.hs

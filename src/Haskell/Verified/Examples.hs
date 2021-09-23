@@ -45,7 +45,7 @@ import qualified Text.Read
 import qualified Prelude
 
 data Handler = Handler
-  { eval :: ModuleInfo -> Maybe Context -> Prelude.String -> Task Error ExampleResult,
+  { eval :: ModuleInfo -> Maybe Context -> Prelude.String -> Task EvalError Verified,
     parseFileWithComments ::
       Prelude.FilePath ->
       Task
@@ -70,7 +70,9 @@ handler = do
         evalIO a b c
           |> map Ok
           |> Exception.handle
-            (\(err :: EvalError) -> Prelude.pure (Err (EvalFailed err)))
+            (\(err :: EvalError) -> Prelude.pure (Err err))
+          |> Exception.handle
+            (\(err :: Hint.InterpreterError) -> Prelude.pure (Err (InterpreterError err)))
           |> Platform.doAnything doAnything
   let parseFileWithComments path =
         parseFileWithCommentsIO path
@@ -121,18 +123,19 @@ verify handler Module {comments, moduleInfo} =
       |> List.map
         ( \example ->
             verifyExample handler moduleInfo maybeContext example
-              |> Task.map ((,) example)
+              |> Task.map (\verified -> (example, ExampleVerifySuccess verified))
+              |> Task.onError (\err -> Task.succeed (example, ExampleVerifyFailed err))
         )
       |> Task.parallel
 
-verifyExample :: Handler -> ModuleInfo -> Maybe Context -> Example -> Task Error ExampleResult
+verifyExample :: Handler -> ModuleInfo -> Maybe Context -> Example -> Task EvalError Verified
 verifyExample handler modInfo maybeContext example =
   case example of
     VerifiedExample _ code -> do
       Prelude.unlines code
         |> (eval handler) modInfo maybeContext
     UnverifiedExample _ code ->
-      Task.succeed (ExampleVerifySuccess NoExampleResult)
+      Task.succeed NoExampleResult
 
 preloadPaths :: Prelude.IO (List Prelude.FilePath)
 preloadPaths = Prelude.traverse DataPath.getDataFileName paths
@@ -193,17 +196,17 @@ evalIO ::
   ModuleInfo ->
   Maybe Context ->
   Prelude.String ->
-  Prelude.IO ExampleResult
+  Prelude.IO Verified
 evalIO moduleInfo maybeContext s = do
   let modulePath = moduleFilePath moduleInfo
   let interpreter =
         case packageDbs moduleInfo of
           [] -> Hint.runInterpreter
           _ -> Hint.Unsafe.unsafeRunInterpreterWithArgs <| List.map Text.toList <| packageDbs moduleInfo
-          >> map
+          >> andThen
             ( \case
-                Prelude.Left err -> ExampleVerifyFailed err
-                Prelude.Right ok -> ExampleVerifySuccess ok
+                Prelude.Left err -> Exception.throwIO err
+                Prelude.Right ok -> Prelude.pure ok
             )
   interpreter <| do
     preload <- Hint.lift preloadPaths

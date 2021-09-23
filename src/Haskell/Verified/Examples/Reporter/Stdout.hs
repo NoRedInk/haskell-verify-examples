@@ -140,18 +140,19 @@ renderExampleWithSrc terminalWidth contents result =
 renderExample :: Int -> (Example, ExampleResult) -> List Chunk
 renderExample _ (example, ExampleVerifyFailed err) =
   case err of
-    Hint.UnknownError unknownError ->
+    UnkownLanguageExtension exts -> [] -- TODO
+    InterpreterError (Hint.UnknownError unknownError) ->
       [ chunk "Unknown error:\n",
         chunk <| Text.fromList unknownError
       ]
-    Hint.WontCompile ghcErrors ->
+    InterpreterError (Hint.WontCompile ghcErrors) ->
       chunk "The example doesn't compile:\n" :
       List.map (chunk << Text.fromList << Hint.errMsg) ghcErrors
-    Hint.NotAllowed msg ->
+    InterpreterError (Hint.NotAllowed msg) ->
       [ chunk "Not allowed:\n",
         chunk <| Text.fromList msg
       ]
-    Hint.GhcException msg ->
+    InterpreterError (Hint.GhcException msg) ->
       [ chunk "GHC exception:\n",
         chunk <| Text.fromList msg
       ]

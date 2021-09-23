@@ -1,1 +1,1 @@
-ExampleVerifySuccess Verified
+Verified
