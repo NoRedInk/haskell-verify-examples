@@ -1,6 +1,6 @@
 Examples of module Simple unverified.
 
-test/assets/Simple.hs:15
+test/assets/passing/Simple.hs:15
 [2m  10: -- > ==> 1
 [m[2m  11: --
 [m[2m  12: -- > test + test
@@ -13,7 +13,7 @@ test/assets/Simple.hs:15
 
 Examples of module UnverifiedExamples unverified.
 
-test/assets/UnverifiedExamples.hs:12
+test/assets/passing/UnverifiedExamples.hs:12
 [2m  7: -- hello world
 [m[2m  8: --
 [m[2m  9: -- > test
@@ -28,7 +28,7 @@ test/assets/UnverifiedExamples.hs:12
 [mNo expected result for example.
 
 
-test/assets/UnverifiedExamples.hs:14
+test/assets/passing/UnverifiedExamples.hs:14
 [2m  9: -- > test
 [m[2m  10: -- > ==> 1
 [m[2m  11: --
@@ -50,7 +50,7 @@ test/assets/UnverifiedExamples.hs:14
  ▲
 
 
-test/assets/UnverifiedExamples.hs:20
+test/assets/passing/UnverifiedExamples.hs:20
 [2m  15: -- > ==> 3
 [m[2m  16: test = 1
 [m[2m  17: 
@@ -71,7 +71,7 @@ test/assets/UnverifiedExamples.hs:20
 "[2,4,5]"
 
 
-test/assets/UnverifiedExamples.hs:29
+test/assets/passing/UnverifiedExamples.hs:29
 [2m  24: -- > ] |> map (+ 1)
 [m[2m  25: -- > ==> [ 2, 4, 5 ]
 [m[2m  26: 
@@ -93,7 +93,7 @@ test/assets/UnverifiedExamples.hs:29
 
 Examples of module WithContext unverified.
 
-test/assets/WithContext.hs:21
+test/assets/passing/WithContext.hs:21
 [2m  16: --
 [m[2m  17: -- Examples:
 [m[2m  18: --
@@ -114,7 +114,7 @@ test/assets/WithContext.hs:21
 
 Examples unverified.
 
-test/assets/Headless.hs:3
+test/assets/passing/Headless.hs:3
 [2m  -2: -- > 1 ==> 1
 [m[2m  -1: --
 [m[2m  0: -- > 1 ==> 2
@@ -133,13 +133,13 @@ test/assets/Headless.hs:3
 Verified: 15
 Unverified: 4
   In these files:
-  * test/assets/Headless.hs
-  * test/assets/UnverifiedExamples.hs
-  * test/assets/WithContext.hs
+  * test/assets/passing/Headless.hs
+  * test/assets/passing/UnverifiedExamples.hs
+  * test/assets/passing/WithContext.hs
 No examples: 2
   In these files:
-  * test/assets/Simple.hs
-  * test/assets/UnverifiedExamples.hs
+  * test/assets/passing/Simple.hs
+  * test/assets/passing/UnverifiedExamples.hs
 Evaluation failed: 1
   In these files:
-  * test/assets/UnverifiedExamples.hs
+  * test/assets/passing/UnverifiedExamples.hs

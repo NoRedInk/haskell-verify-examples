@@ -1,6 +1,6 @@
 {-# LANGUAGE UnkownLanguageExtension #-}
 
-module FailsUnkownLanguageExtension where
+module UnkownLanguageExtension where
 
 import Prelude
 

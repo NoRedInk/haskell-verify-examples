@@ -24,7 +24,7 @@ tests =
         [ test "returns all comments" <| \() -> do
             handler <- Expect.fromIO HVE.handler
             result <-
-              HVE.parse handler "test/assets/Simple.hs"
+              HVE.parse handler "test/assets/passing/Simple.hs"
                 |> Expect.succeeds
             result
               |> Debug.toString
@@ -32,7 +32,7 @@ tests =
           test "distinguishs examples without `==>`" <| \() -> do
             handler <- Expect.fromIO HVE.handler
             result <-
-              HVE.parse handler "test/assets/UnverifiedExamples.hs"
+              HVE.parse handler "test/assets/passing/UnverifiedExamples.hs"
                 |> Expect.succeeds
             result
               |> Debug.toString
@@ -40,7 +40,7 @@ tests =
           test "parses context code" <| \() -> do
             handler <- Expect.fromIO HVE.handler
             result <-
-              HVE.parse handler "test/assets/WithContext.hs"
+              HVE.parse handler "test/assets/passing/WithContext.hs"
                 |> Expect.succeeds
             result
               |> Debug.toString
@@ -135,12 +135,11 @@ tests =
         [ test "verifies all examples from a file" <| \() -> do
             handler <- Expect.fromIO HVE.handler
             assets <-
-              Directory.listDirectory "test/assets"
+              Directory.listDirectory "test/assets/passing"
                 |> Expect.fromIO
             results <-
               assets
-                |> List.filter (Text.fromList >> Text.startsWith "Fails" >> not)
-                |> List.map ("test/assets/" ++)
+                |> List.map ("test/assets/passing/" ++)
                 |> List.map
                   ( \modulePath -> do
                       parsed <- HVE.parse handler modulePath
@@ -152,16 +151,15 @@ tests =
             contents <-
               withTempFile (\handle -> Reporter.Stdout.report handle results)
             contents
-              |> Expect.equalToContentsOf "test/golden-results/integration-simple.hs",
+              |> Expect.equalToContentsOf "test/golden-results/integration-passing.hs",
           test "failing examples" <| \() -> do
             handler <- Expect.fromIO HVE.handler
             assets <-
-              Directory.listDirectory "test/assets"
+              Directory.listDirectory "test/assets/failing"
                 |> Expect.fromIO
             errors <-
               assets
-                |> List.filter (Text.fromList >> Text.startsWith "Fails")
-                |> List.map ("test/assets/" ++)
+                |> List.map ("test/assets/failing/" ++)
                 |> List.map
                   ( \modulePath -> do
                       parsed <- HVE.parse handler modulePath
@@ -173,7 +171,7 @@ tests =
             contents <-
               withTempFile (\handle -> Reporter.Stdout.reportError handle errors)
             contents
-              |> Expect.equalToContentsOf "test/golden-results/integration-fails.hs"
+              |> Expect.equalToContentsOf "test/golden-results/integration-failing.hs"
         ]
     ]
 
