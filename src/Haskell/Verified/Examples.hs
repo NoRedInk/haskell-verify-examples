@@ -44,8 +44,22 @@ import qualified Text.Read
 import qualified Prelude
 
 data Handler = Handler
-  { doAnything :: Platform.DoAnythingHandler,
-    eval :: ModuleInfo -> Maybe Context -> Prelude.String -> Task Error ExampleResult
+  { eval :: ModuleInfo -> Maybe Context -> Prelude.String -> Task Error ExampleResult,
+    parseFileWithComments ::
+      Prelude.FilePath ->
+      Task
+        Error
+        ( LHE.Syntax.Module LHE.SrcLoc.SrcSpanInfo,
+          List LHE.Comments.Comment
+        ),
+    loadImplicitCradle ::
+      Prelude.FilePath ->
+      Task Error (HIE.Bios.Types.Cradle HIE.Bios.Types.ComponentOptions),
+    getCompilerOptions ::
+      Prelude.FilePath ->
+      HIE.Bios.Types.Cradle HIE.Bios.Types.ComponentOptions ->
+      Task Error HIE.Bios.Types.ComponentOptions,
+    writeTempFile :: List Prelude.String -> Task Error Prelude.FilePath
   }
 
 handler :: Prelude.IO Handler
@@ -55,7 +69,46 @@ handler = do
         evalIO a b c
           |> map Ok
           |> Platform.doAnything doAnything
-  Prelude.pure Handler {doAnything, eval}
+  let parseFileWithComments path =
+        parseFileWithCommentsIO path
+          |> map
+            ( \case
+                LHE.Parser.ParseOk ok -> Ok ok
+                LHE.Parser.ParseFailed x msg -> Err (ParseFailed path x msg)
+            )
+          |> Platform.doAnything doAnything
+  let loadImplicitCradle p =
+        HIE.Bios.Cradle.loadImplicitCradle p
+          |> map Ok
+          |> Platform.doAnything doAnything
+  let getCompilerOptions p c =
+        HIE.Bios.Flags.getCompilerOptions p c
+          |> map
+            ( \case
+                HIE.Bios.Types.CradleSuccess componentOptions -> Ok componentOptions
+                HIE.Bios.Types.CradleFail err -> Err (CradleFailed err)
+            )
+          |> Platform.doAnything doAnything
+  let writeTempFile contents =
+        writeTempFileIO contents
+          |> map Ok
+          |> Platform.doAnything doAnything
+  Prelude.pure
+    Handler
+      { eval,
+        parseFileWithComments,
+        loadImplicitCradle,
+        getCompilerOptions,
+        writeTempFile
+      }
+
+writeTempFileIO :: List Prelude.String -> Prelude.IO Prelude.FilePath
+writeTempFileIO contents = do
+  (path, handle) <-
+    System.IO.openTempFile "/tmp" "HaskellVerifiedExamples.hs"
+  _ <- Prelude.traverse (System.IO.hPutStrLn handle) contents
+  System.IO.hClose handle
+  Prelude.pure path
 
 verify :: Handler -> Module -> Task Error (List (Example, ExampleResult))
 verify handler Module {comments, moduleInfo} =
@@ -203,43 +256,29 @@ exampleFromText val =
 
 parse :: Handler -> Prelude.FilePath -> Task Error Module
 parse handler path = do
-  parsed <-
-    parseFileWithComments path
-      |> map Ok
-      |> Platform.doAnything (doAnything handler)
-  case parsed of
-    LHE.Parser.ParseOk ok -> Task.succeed (toModule ok)
-    LHE.Parser.ParseFailed x msg ->
-      ParseFailed path x msg
-        |> Task.fail
+  parsed <- (parseFileWithComments handler) path
+  Task.succeed (toModule parsed)
 
 -- Parses the file for imports / extensions / comments, but also will attempt to find the cradle for project default extensions and module directories
 tryLoadImplicitCradle :: Handler -> Prelude.FilePath -> Module -> Task Error Module
 tryLoadImplicitCradle handler path mod =
-  Platform.doAnything (doAnything handler) <| map Ok <| do
-    cradle <- HIE.Bios.Cradle.loadImplicitCradle path
-    cradleResult <- HIE.Bios.Flags.getCompilerOptions path cradle
-
-    case cradleResult of
-      HIE.Bios.Types.CradleSuccess componentOptions -> do
-        let opts = List.map Text.fromList <| HIE.Bios.Types.componentOptions componentOptions
-        let searchPaths = getSearchPaths opts
-        let packageDbs = getPackageDbs opts
-        let defaultExtensions = getDefaultLanguageExtensions opts
-
-        let modInfo = moduleInfo mod
-
-        let exModInfo =
-              modInfo
-                { languageExtensions = defaultExtensions ++ languageExtensions modInfo,
-                  importPaths = searchPaths,
-                  packageDbs = packageDbs
-                }
-
-        Prelude.return mod {moduleInfo = exModInfo}
-      err ->
-        let _ = Debug.log "Failed to load cradle with error" err
-         in Prelude.return mod
+  Task.onError (\_ -> Task.succeed mod) <| do
+    cradle <- (loadImplicitCradle handler) path
+    componentOptions <- (getCompilerOptions handler) path cradle
+    let opts = List.map Text.fromList <| HIE.Bios.Types.componentOptions componentOptions
+    let searchPaths = getSearchPaths opts
+    let packageDbs = getPackageDbs opts
+    let defaultExtensions = getDefaultLanguageExtensions opts
+    let modInfo = moduleInfo mod
+    Task.succeed
+      mod
+        { moduleInfo =
+            modInfo
+              { languageExtensions = defaultExtensions ++ languageExtensions modInfo,
+                importPaths = searchPaths,
+                packageDbs = packageDbs
+              }
+        }
 
 examples :: List Comment -> List Example
 examples =
@@ -264,36 +303,20 @@ data Context = Context
     contextModuleName :: Text
   }
 
-withContext ::
-  Handler ->
-  ModuleInfo ->
-  List Comment ->
-  (Maybe Context -> Task err a) ->
-  Task err a
+withContext :: Handler -> ModuleInfo -> List Comment -> (Maybe Context -> Task Error a) -> Task Error a
 withContext handler modInfo comments go = do
   let contextModuleName = "HaskellVerifiedExamplesContext"
   case contextBlocks comments of
     [] -> go Nothing
-    xs ->
-      Platform.doAnything (doAnything handler)
-        <| withTempFile
-          ( \path handle -> do
-              _ <- System.IO.hPutStrLn handle ("module " ++ Text.toList contextModuleName ++ " where")
-              _ <-
-                modInfo
-                  |> imports
-                  |> List.map renderImport
-                  |> Prelude.traverse (System.IO.hPutStrLn handle)
-              xs
-                |> Prelude.unlines
-                |> System.IO.hPutStr handle
-              Prelude.pure ()
-          )
-          ( \contextModulePath -> do
-              logHandler <- Platform.silentHandler
-              go (Just Context {contextModulePath, contextModuleName})
-                |> Task.attempt logHandler
-          )
+    xs -> do
+      contextModulePath <-
+        [ ["module " ++ Text.toList contextModuleName ++ " where"],
+          List.map renderImport (imports modInfo),
+          xs
+          ]
+          |> List.concat
+          |> writeTempFile handler
+      go (Just Context {contextModulePath, contextModuleName})
 
 renderImport :: Hint.ModuleImport -> Prelude.String
 renderImport m =
@@ -425,7 +448,7 @@ toExample srcSpan source =
       let _ = Debug.log "msg" msg
        in Debug.todo "TODO"
 
-parseFileWithComments ::
+parseFileWithCommentsIO ::
   Prelude.FilePath ->
   Prelude.IO
     ( LHE.Parser.ParseResult
@@ -433,7 +456,7 @@ parseFileWithComments ::
           List LHE.Comments.Comment
         )
     )
-parseFileWithComments path =
+parseFileWithCommentsIO path =
   LHE.parseFileWithComments (LHE.defaultParseMode {LHE.parseFilename = path, LHE.extensions = [LHE.EnableExtension LHE.CPP]}) path
 
 data Reporter
@@ -451,14 +474,3 @@ report reporters results =
   ]
     |> List.filterMap identity
     |> Async.mapConcurrently_ identity
-
-withTempFile ::
-  (System.IO.FilePath -> System.IO.Handle -> Prelude.IO ()) ->
-  (Prelude.FilePath -> Prelude.IO a) ->
-  Prelude.IO a
-withTempFile before go = do
-  (path, handle) <-
-    System.IO.openTempFile "/tmp" "HaskellVerifiedExamples.hs"
-  _ <- before path handle
-  System.IO.hClose handle
-  go path
