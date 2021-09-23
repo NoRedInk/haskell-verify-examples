@@ -37,34 +37,44 @@ import qualified Language.Haskell.Interpreter as Hint
 import qualified Language.Haskell.Interpreter.Unsafe as Hint.Unsafe
 import NriPrelude
 import qualified Paths_haskell_verified_examples as DataPath
+import qualified Platform
 import qualified System.IO
 import qualified Text.Read
 import qualified Prelude
 
-verify :: Module -> Prelude.IO (List ExampleResult)
-verify Module {comments, moduleInfo} =
-  withContext moduleInfo comments <| \maybeContext ->
+data Error
+  = ParseFailed Prelude.FilePath LHE.SrcLoc.SrcLoc Prelude.String
+  deriving (Show)
+
+-- TODO create actual HVE.Handler that contains those IOs
+verify :: Platform.DoAnythingHandler -> Module -> Task Error (List ExampleResult)
+verify doAnything Module {comments, moduleInfo} =
+  withContext doAnything moduleInfo comments <| \maybeContext ->
     comments
       |> examples
-      |> Async.mapConcurrently (verifyExample moduleInfo maybeContext)
+      |> List.map (verifyExample doAnything moduleInfo maybeContext)
+      |> Task.parallel
 
-verifyExample :: ModuleInfo -> Maybe Context -> Example -> Prelude.IO ExampleResult
-verifyExample modInfo maybeContext example =
-  case example of
-    VerifiedExample _ code -> do
-      result <-
-        Prelude.unlines code
-          |> eval modInfo maybeContext
-      case result of
-        Prelude.Left err ->
-          Prelude.pure (ExampleVerifyFailed example err)
-        Prelude.Right execResult ->
-          ExampleVerifySuccess example execResult
-            |> Prelude.pure
-    UnverifiedExample _ code ->
-      NoExampleResult
-        |> ExampleVerifySuccess example
-        |> Prelude.pure
+verifyExample :: Platform.DoAnythingHandler -> ModuleInfo -> Maybe Context -> Example -> Task Error ExampleResult
+verifyExample doAnything modInfo maybeContext example =
+  -- TODO use task
+  Platform.doAnything doAnything
+    <| map Ok
+    <| case example of
+      VerifiedExample _ code -> do
+        result <-
+          Prelude.unlines code
+            |> eval modInfo maybeContext
+        case result of
+          Prelude.Left err ->
+            Prelude.pure (ExampleVerifyFailed example err)
+          Prelude.Right execResult ->
+            ExampleVerifySuccess example execResult
+              |> Prelude.pure
+      UnverifiedExample _ code ->
+        NoExampleResult
+          |> ExampleVerifySuccess example
+          |> Prelude.pure
 
 preloadPaths :: Prelude.IO (List Prelude.FilePath)
 preloadPaths = Prelude.traverse DataPath.getDataFileName paths
@@ -184,40 +194,45 @@ exampleFromText :: Prelude.String -> Example
 exampleFromText val =
   toExample emptySrcSpan (Prelude.lines val)
 
-parse :: Prelude.FilePath -> Prelude.IO Module
-parse path = do
-  parsed <- parseFileWithComments path
+parse :: Platform.DoAnythingHandler -> Prelude.FilePath -> Task Error Module
+parse doAnything path = do
+  parsed <-
+    parseFileWithComments path
+      |> map Ok
+      |> Platform.doAnything doAnything
   case parsed of
-    LHE.Parser.ParseOk ok -> Prelude.pure (toModule ok)
+    LHE.Parser.ParseOk ok -> Task.succeed (toModule ok)
     LHE.Parser.ParseFailed x msg ->
-      Debug.todo (Debug.toString x ++ Debug.toString msg)
+      ParseFailed path x msg
+        |> Task.fail
 
 -- Parses the file for imports / extensions / comments, but also will attempt to find the cradle for project default extensions and module directories
-tryLoadImplicitCradle :: Prelude.FilePath -> Module -> Prelude.IO Module
-tryLoadImplicitCradle path mod = do
-  cradle <- HIE.Bios.Cradle.loadImplicitCradle path
-  cradleResult <- HIE.Bios.Flags.getCompilerOptions path cradle
+tryLoadImplicitCradle :: Platform.DoAnythingHandler -> Prelude.FilePath -> Module -> Task Error Module
+tryLoadImplicitCradle doAnything path mod =
+  Platform.doAnything doAnything <| map Ok <| do
+    cradle <- HIE.Bios.Cradle.loadImplicitCradle path
+    cradleResult <- HIE.Bios.Flags.getCompilerOptions path cradle
 
-  case cradleResult of
-    HIE.Bios.Types.CradleSuccess componentOptions -> do
-      let opts = List.map Text.fromList <| HIE.Bios.Types.componentOptions componentOptions
-      let searchPaths = getSearchPaths opts
-      let packageDbs = getPackageDbs opts
-      let defaultExtensions = getDefaultLanguageExtensions opts
+    case cradleResult of
+      HIE.Bios.Types.CradleSuccess componentOptions -> do
+        let opts = List.map Text.fromList <| HIE.Bios.Types.componentOptions componentOptions
+        let searchPaths = getSearchPaths opts
+        let packageDbs = getPackageDbs opts
+        let defaultExtensions = getDefaultLanguageExtensions opts
 
-      let modInfo = moduleInfo mod
+        let modInfo = moduleInfo mod
 
-      let exModInfo =
-            modInfo
-              { languageExtensions = defaultExtensions ++ languageExtensions modInfo,
-                importPaths = searchPaths,
-                packageDbs = packageDbs
-              }
+        let exModInfo =
+              modInfo
+                { languageExtensions = defaultExtensions ++ languageExtensions modInfo,
+                  importPaths = searchPaths,
+                  packageDbs = packageDbs
+                }
 
-      Prelude.return mod {moduleInfo = exModInfo}
-    err ->
-      let _ = Debug.log "Failed to load cradle with error" err
-       in Prelude.return mod
+        Prelude.return mod {moduleInfo = exModInfo}
+      err ->
+        let _ = Debug.log "Failed to load cradle with error" err
+         in Prelude.return mod
 
 examples :: List Comment -> List Example
 examples =
@@ -242,26 +257,36 @@ data Context = Context
     contextModuleName :: Text
   }
 
-withContext :: ModuleInfo -> List Comment -> (Maybe Context -> Prelude.IO a) -> Prelude.IO a
-withContext modInfo comments go = do
+withContext ::
+  Platform.DoAnythingHandler ->
+  ModuleInfo ->
+  List Comment ->
+  (Maybe Context -> Task err a) ->
+  Task err a
+withContext doAnything modInfo comments go = do
   let contextModuleName = "HaskellVerifiedExamplesContext"
   case contextBlocks comments of
     [] -> go Nothing
     xs ->
-      withTempFile
-        ( \path handle -> do
-            _ <- System.IO.hPutStrLn handle ("module " ++ Text.toList contextModuleName ++ " where")
-            _ <-
-              modInfo
-                |> imports
-                |> List.map renderImport
-                |> Prelude.traverse (System.IO.hPutStrLn handle)
-            xs
-              |> Prelude.unlines
-              |> System.IO.hPutStr handle
-            Prelude.pure ()
-        )
-        (\contextModulePath -> go (Just Context {contextModulePath, contextModuleName}))
+      Platform.doAnything doAnything
+        <| withTempFile
+          ( \path handle -> do
+              _ <- System.IO.hPutStrLn handle ("module " ++ Text.toList contextModuleName ++ " where")
+              _ <-
+                modInfo
+                  |> imports
+                  |> List.map renderImport
+                  |> Prelude.traverse (System.IO.hPutStrLn handle)
+              xs
+                |> Prelude.unlines
+                |> System.IO.hPutStr handle
+              Prelude.pure ()
+          )
+          ( \contextModulePath -> do
+              logHandler <- Platform.silentHandler
+              go (Just Context {contextModulePath, contextModuleName})
+                |> Task.attempt logHandler
+          )
 
 renderImport :: Hint.ModuleImport -> Prelude.String
 renderImport m =

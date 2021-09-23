@@ -22,23 +22,26 @@ tests =
     [ describe
         "parse"
         [ test "returns all comments" <| \() -> do
+            doAnything <- Expect.fromIO Platform.doAnythingHandler
             result <-
-              HVE.parse "test/assets/Simple.hs"
-                |> Expect.fromIO
+              HVE.parse doAnything "test/assets/Simple.hs"
+                |> Expect.succeeds
             result
               |> Debug.toString
               |> Expect.equalToContentsOf "test/golden-results/parse-simple.hs",
           test "distinguishs examples without `==>`" <| \() -> do
+            doAnything <- Expect.fromIO Platform.doAnythingHandler
             result <-
-              HVE.parse "test/assets/UnverifiedExamples.hs"
-                |> Expect.fromIO
+              HVE.parse doAnything "test/assets/UnverifiedExamples.hs"
+                |> Expect.succeeds
             result
               |> Debug.toString
               |> Expect.equalToContentsOf "test/golden-results/parse-unverified-examples.hs",
           test "parses context code" <| \() -> do
+            doAnything <- Expect.fromIO Platform.doAnythingHandler
             result <-
-              HVE.parse "test/assets/WithContext.hs"
-                |> Expect.fromIO
+              HVE.parse doAnything "test/assets/WithContext.hs"
+                |> Expect.succeeds
             result
               |> Debug.toString
               |> Expect.equalToContentsOf "test/golden-results/parse-with-context.hs"
@@ -47,28 +50,33 @@ tests =
         "verifyExample"
         [ test "verfies an example when it succeeds" <| \() -> do
             let example = HVE.exampleFromText "1 + 1 ==> 2"
+            doAnything <- Expect.fromIO Platform.doAnythingHandler
             result <-
               example
                 |> HVE.verifyExample
+                  doAnything
                   (HVE.shimModuleWithImports ["NriPrelude"])
                   Nothing
-                |> Expect.fromIO
+                |> Expect.succeeds
             result
               |> Debug.toString
               |> Expect.equalToContentsOf "test/golden-results/verifyExample-verified.hs",
           test "verfies an example when it fails" <| \() -> do
             let example = HVE.exampleFromText "1 + 1 ==> 3"
+            doAnything <- Expect.fromIO Platform.doAnythingHandler
             result <-
               example
                 |> HVE.verifyExample
+                  doAnything
                   (HVE.shimModuleWithImports ["NriPrelude"])
                   Nothing
-                |> Expect.fromIO
+                |> Expect.succeeds
             result
               |> Debug.toString
               |> Expect.equalToContentsOf "test/golden-results/verifyExample-unverified.hs",
           test "verfies multiline example (succeeds)" <| \() ->
             do
+              doAnything <- Expect.fromIO Platform.doAnythingHandler
               let example =
                     [ "[ 1",
                       ", 2",
@@ -86,13 +94,15 @@ tests =
               result <-
                 example
                   |> HVE.verifyExample
+                    doAnything
                     (HVE.shimModuleWithImports ["List", "NriPrelude"])
                     Nothing
-                  |> Expect.fromIO
+                  |> Expect.succeeds
               result
                 |> Debug.toString
                 |> Expect.equalToContentsOf "test/golden-results/verifyExample-multiline-verified.hs",
           test "verfies multiline example (fails)" <| \() -> do
+            doAnything <- Expect.fromIO Platform.doAnythingHandler
             let example =
                   [ "[ 1",
                     ", 2",
@@ -110,9 +120,10 @@ tests =
             result <-
               example
                 |> HVE.verifyExample
+                  doAnything
                   (HVE.shimModuleWithImports ["List", "NriPrelude"])
                   Nothing
-                |> Expect.fromIO
+                |> Expect.succeeds
             result
               |> Debug.toString
               |> Expect.equalToContentsOf "test/golden-results/verifyExample-multiline-unverified.hs"
@@ -120,19 +131,21 @@ tests =
       describe
         "Integration"
         [ test "verifies all examples from a file" <| \() -> do
+            doAnything <- Expect.fromIO Platform.doAnythingHandler
             assets <-
               Directory.listDirectory "test/assets"
                 |> Expect.fromIO
             results <-
               assets
                 |> List.map ("test/assets/" ++)
-                |> Async.mapConcurrently
+                |> List.map
                   ( \modulePath -> do
-                      parsed <- HVE.parse modulePath
-                      result <- HVE.verify parsed
-                      Prelude.pure (HVE.moduleInfo parsed, result)
+                      parsed <- HVE.parse doAnything modulePath
+                      result <- HVE.verify doAnything parsed
+                      Task.succeed (HVE.moduleInfo parsed, result)
                   )
-                |> Expect.fromIO
+                |> Task.parallel
+                |> Expect.succeeds
             contents <-
               withTempFile (\handle -> Reporter.Stdout.report handle results)
             contents

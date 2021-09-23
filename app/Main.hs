@@ -4,6 +4,7 @@ import qualified Control.Monad
 import qualified Data.Foldable
 import qualified Haskell.Verified.Examples as HVE
 import NriPrelude
+import qualified Platform
 import qualified System.Directory
 import qualified System.Environment
 import System.FilePath.Find ((&&?), (==?))
@@ -12,6 +13,8 @@ import qualified Prelude
 
 main :: Prelude.IO ()
 main = do
+  doAnything <- Platform.doAnythingHandler
+  logHandler <- Platform.silentHandler
   cwd <- System.Directory.getCurrentDirectory
   params <- System.Environment.getArgs
   files <- case params of
@@ -19,13 +22,21 @@ main = do
     [] -> Find.find (noRCS &&? noDist) (Find.extension ==? ".hs") cwd
   results <-
     files
-      |> Prelude.traverse
+      |> List.map
         ( \modulePath -> do
-            parsed <- HVE.parse modulePath >>= HVE.tryLoadImplicitCradle modulePath
-            results <- HVE.verify parsed
-            Prelude.pure (HVE.moduleInfo parsed, results)
+            parsed <-
+              HVE.parse doAnything modulePath
+                |> Task.andThen (HVE.tryLoadImplicitCradle doAnything modulePath)
+            results <- HVE.verify doAnything parsed
+            Task.succeed (HVE.moduleInfo parsed, results)
         )
-  HVE.report [HVE.Stdout] results
+      |> Task.parallel
+      |> Task.attempt logHandler
+  case results of
+    Ok res -> HVE.report [HVE.Stdout] res
+    Err err ->
+      let _ = Debug.log "ERR TODO Handle nicely" err
+       in Prelude.pure ()
 
 noRCS :: Find.RecursionPredicate
 noRCS =
