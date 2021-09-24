@@ -13,7 +13,6 @@ module Haskell.Verified.Examples
     ExampleResult (..),
     Reporter (..),
     report,
-    reportError,
     shimModuleWithImports,
   )
 where
@@ -490,19 +489,10 @@ data Reporter
   | LogFile
   deriving (Eq)
 
-report :: List Reporter -> List (ModuleInfo, List (Example, ExampleResult)) -> Prelude.IO ()
-report reporters results =
+report :: List Reporter -> Result Error (List (ModuleInfo, List (Example, ExampleResult))) -> Prelude.IO ()
+report reporters result =
   [ if List.member Stdout reporters
-      then Just (Reporter.Stdout.report System.IO.stdout results)
-      else Nothing
-  ]
-    |> List.filterMap identity
-    |> Async.mapConcurrently_ identity
-
-reportError :: List Reporter -> Error -> Prelude.IO ()
-reportError reporters err =
-  [ if List.member Stdout reporters
-      then Just (Reporter.Stdout.reportError System.IO.stdout err)
+      then Just (Reporter.Stdout.report System.IO.stdout result)
       else Nothing
   ]
     |> List.filterMap identity

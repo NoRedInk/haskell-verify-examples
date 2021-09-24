@@ -31,9 +31,7 @@ main = do
         )
       |> Task.parallel
       |> Task.attempt logHandler
-  case results of
-    Ok res -> HVE.report [HVE.Stdout] res
-    Err err -> HVE.reportError [HVE.Stdout] err
+  HVE.report [HVE.Stdout] results
 
 noRCS :: Find.RecursionPredicate
 noRCS =

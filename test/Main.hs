@@ -149,7 +149,7 @@ tests =
                 |> Task.parallel
                 |> Expect.succeeds
             contents <-
-              withTempFile (\handle -> Reporter.Stdout.report handle results)
+              withTempFile (\handle -> Reporter.Stdout.report handle (Ok results))
             contents
               |> Expect.equalToContentsOf "test/golden-results/integration.hs"
         ]

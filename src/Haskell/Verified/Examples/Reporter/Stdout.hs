@@ -1,9 +1,5 @@
 -- | Module for presenting example results on the console.
-module Haskell.Verified.Examples.Reporter.Stdout
-  ( report,
-    reportError,
-  )
-where
+module Haskell.Verified.Examples.Reporter.Stdout (report) where
 
 import qualified Control.Exception as Exception
 import qualified Data.ByteString as BS
@@ -27,8 +23,12 @@ import qualified Text.Colour.Capabilities
 import qualified Text.Show.Pretty
 import qualified Prelude
 
-report :: System.IO.Handle -> List (ModuleInfo, List (Example, ExampleResult)) -> Prelude.IO ()
-report handle results = do
+report :: System.IO.Handle -> Result Error (List (ModuleInfo, List (Example, ExampleResult))) -> Prelude.IO ()
+report handle (Ok results) = reportResults handle results
+report handle (Err err) = reportError handle err
+
+reportResults :: System.IO.Handle -> List (ModuleInfo, List (Example, ExampleResult)) -> Prelude.IO ()
+reportResults handle results = do
   window <- Terminal.size
   let terminalWidth = case window of
         Just Terminal.Window {Terminal.width} -> width - 4 -- indentation
