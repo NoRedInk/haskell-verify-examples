@@ -220,7 +220,9 @@ evalIO moduleInfo maybeContext s = do
               )
             |> List.unzip
             |> Tuple.mapBoth (List.filterMap identity) (List.filterMap identity)
-    if List.isEmpty unknownLangs
+    -- Extensions we can safely ignore.
+    let ignoreExts = ["Haskell2010"]
+    if List.isEmpty (List.filter (\lang -> not <| List.member lang ignoreExts) unknownLangs)
       then Prelude.pure ()
       else Exception.throwIO (UnkownLanguageExtension unknownLangs)
     let searchPaths = List.map Text.toList <| importPaths moduleInfo
