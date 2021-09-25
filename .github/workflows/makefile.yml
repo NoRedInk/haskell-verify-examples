@@ -13,3 +13,13 @@ jobs:
       
     - name: Run check
       run: nix-shell --run "make check"
+
+    - name: Cache stuff
+      uses: actions/cache@v2
+      with:
+        path: |
+          ~/.cabal/packages
+          ~/.cabal/store
+          dist-newstyle
+          nix/store/
+        key: ${{ runner.os }}-${{ matrix.ghc }}
