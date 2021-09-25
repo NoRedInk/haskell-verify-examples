@@ -137,7 +137,7 @@ tests assets =
         "Integration"
         ( List.map
             ( \modulePath ->
-                test "verifies all examples from a file" <| \() -> do
+                test ("verifies all examples from a file from " ++ Text.fromList modulePath) <| \() -> do
                   handler <- Expect.fromIO HVE.handler
                   results <-
                     Expect.succeeds <| do
