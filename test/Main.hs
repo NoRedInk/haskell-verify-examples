@@ -7,16 +7,19 @@ import qualified Haskell.Verified.Examples as HVE
 import qualified Haskell.Verified.Examples.Reporter.Stdout as Reporter.Stdout
 import qualified Language.Haskell.Exts.SrcLoc as LHE.SrcLoc
 import qualified System.Directory as Directory
+import qualified System.FilePath as FilePath
 import qualified System.IO
 import Test (Test, describe, test)
 import qualified Test
 import qualified Prelude
 
 main :: Prelude.IO ()
-main = Test.run tests
+main = do
+  assets <- Directory.listDirectory "test/assets/"
+  Test.run (tests assets)
 
-tests :: Test
-tests =
+tests :: List Prelude.FilePath -> Test
+tests assets =
   describe
     "Haskell.Verified.Examples"
     [ describe
@@ -132,27 +135,23 @@ tests =
         ],
       describe
         "Integration"
-        [ test "verifies all examples from a file" <| \() -> do
-            handler <- Expect.fromIO HVE.handler
-            assets <-
-              Directory.listDirectory "test/assets/"
-                |> Expect.fromIO
-            results <-
-              assets
-                |> List.map ("test/assets/" ++)
-                |> List.map
-                  ( \modulePath -> do
-                      parsed <- HVE.parse handler modulePath
-                      result <- HVE.verify handler parsed
-                      Task.succeed (HVE.moduleInfo parsed, result)
-                  )
-                |> Task.parallel
-                |> Expect.succeeds
-            contents <-
-              withTempFile (\handle -> Reporter.Stdout.report handle (Ok results))
-            contents
-              |> Expect.equalToContentsOf "test/golden-results/integration.hs"
-        ]
+        ( assets
+            |> List.map ("test/assets/" ++)
+            |> List.map
+              ( \modulePath ->
+                  test "verifies all examples from a file" <| \() -> do
+                    handler <- Expect.fromIO HVE.handler
+                    results <-
+                      Expect.succeeds <| do
+                        parsed <- HVE.parse handler modulePath
+                        result <- HVE.verify handler parsed
+                        Task.succeed (HVE.moduleInfo parsed, result)
+                    contents <-
+                      withTempFile (\handle -> Reporter.Stdout.report handle (Ok [results]))
+                    contents
+                      |> Expect.equalToContentsOf ("test/golden-results/integration-" ++ Text.fromList (FilePath.takeFileName modulePath) ++ ".hs")
+              )
+        )
     ]
 
 -- | Provide a temporary file for a test to do some work in, then return the
