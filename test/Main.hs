@@ -135,22 +135,21 @@ tests assets =
         ],
       describe
         "Integration"
-        ( assets
-            |> List.map ("test/assets/" ++)
-            |> List.map
-              ( \modulePath ->
-                  test "verifies all examples from a file" <| \() -> do
-                    handler <- Expect.fromIO HVE.handler
-                    results <-
-                      Expect.succeeds <| do
-                        parsed <- HVE.parse handler modulePath
-                        result <- HVE.verify handler parsed
-                        Task.succeed (HVE.moduleInfo parsed, result)
-                    contents <-
-                      withTempFile (\handle -> Reporter.Stdout.report handle (Ok [results]))
-                    contents
-                      |> Expect.equalToContentsOf ("test/golden-results/integration-" ++ Text.fromList (FilePath.takeFileName modulePath) ++ ".hs")
-              )
+        ( List.map
+            ( \modulePath ->
+                test "verifies all examples from a file" <| \() -> do
+                  handler <- Expect.fromIO HVE.handler
+                  results <-
+                    Expect.succeeds <| do
+                      parsed <- HVE.parse handler ("test/assets/" ++ modulePath)
+                      result <- HVE.verify handler parsed
+                      Task.succeed (HVE.moduleInfo parsed, result)
+                  contents <-
+                    withTempFile (\handle -> Reporter.Stdout.report handle (Ok [results]))
+                  contents
+                    |> Expect.equalToContentsOf ("test/golden-results/integration-" ++ Text.fromList modulePath ++ ".hs")
+            )
+            assets
         )
     ]
 
