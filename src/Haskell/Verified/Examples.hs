@@ -1,5 +1,6 @@
 module Haskell.Verified.Examples
-  ( parse,
+  ( handler,
+    parse,
     tryLoadImplicitCradle,
     Module (..),
     ModuleInfo (..),
@@ -17,6 +18,7 @@ module Haskell.Verified.Examples
 where
 
 import qualified Control.Concurrent.Async as Async
+import qualified Control.Exception.Safe as Exception
 import qualified Data.Foldable as Foldable
 import qualified Data.List
 import qualified Data.Text.IO
@@ -37,34 +39,103 @@ import qualified Language.Haskell.Interpreter as Hint
 import qualified Language.Haskell.Interpreter.Unsafe as Hint.Unsafe
 import NriPrelude
 import qualified Paths_haskell_verified_examples as DataPath
+import qualified Platform
 import qualified System.IO
 import qualified Text.Read
 import qualified Prelude
 
-verify :: Module -> Prelude.IO (List ExampleResult)
-verify Module {comments, moduleInfo} =
-  withContext moduleInfo comments <| \maybeContext ->
+data Handler = Handler
+  { eval :: ModuleInfo -> Maybe Context -> Prelude.String -> Task EvalError Verified,
+    parseFileWithComments ::
+      Prelude.FilePath ->
+      Task
+        Error
+        ( LHE.Syntax.Module LHE.SrcLoc.SrcSpanInfo,
+          List LHE.Comments.Comment
+        ),
+    loadImplicitCradle ::
+      Prelude.FilePath ->
+      Task Error (HIE.Bios.Types.Cradle HIE.Bios.Types.ComponentOptions),
+    getCompilerOptions ::
+      Prelude.FilePath ->
+      HIE.Bios.Types.Cradle HIE.Bios.Types.ComponentOptions ->
+      Task Error HIE.Bios.Types.ComponentOptions,
+    writeTempFile :: List Prelude.String -> Task Error Prelude.FilePath
+  }
+
+handler :: Prelude.IO Handler
+handler = do
+  doAnything <- Platform.doAnythingHandler
+  let eval a b c =
+        evalIO a b c
+          |> map Ok
+          |> Exception.handle
+            (\(err :: EvalError) -> Prelude.pure (Err err))
+          |> Exception.handle
+            (\(err :: Hint.InterpreterError) -> Prelude.pure (Err (InterpreterError err)))
+          |> Platform.doAnything doAnything
+  let parseFileWithComments path =
+        parseFileWithCommentsIO path
+          |> map
+            ( \case
+                LHE.Parser.ParseOk ok -> Ok ok
+                LHE.Parser.ParseFailed x msg -> Err (ParseFailed x msg)
+            )
+          |> Platform.doAnything doAnything
+  let loadImplicitCradle p =
+        HIE.Bios.Cradle.loadImplicitCradle p
+          |> map Ok
+          |> Platform.doAnything doAnything
+  let getCompilerOptions p c =
+        HIE.Bios.Flags.getCompilerOptions p c
+          |> map
+            ( \case
+                HIE.Bios.Types.CradleSuccess componentOptions -> Ok componentOptions
+                HIE.Bios.Types.CradleFail err -> Err (CradleFailed err)
+            )
+          |> Platform.doAnything doAnything
+  let writeTempFile contents =
+        writeTempFileIO contents
+          |> map Ok
+          |> Platform.doAnything doAnything
+  Prelude.pure
+    Handler
+      { eval,
+        parseFileWithComments,
+        loadImplicitCradle,
+        getCompilerOptions,
+        writeTempFile
+      }
+
+writeTempFileIO :: List Prelude.String -> Prelude.IO Prelude.FilePath
+writeTempFileIO contents = do
+  (path, handle) <-
+    System.IO.openTempFile "/tmp" "HaskellVerifiedExamples.hs"
+  _ <- Prelude.traverse (System.IO.hPutStrLn handle) contents
+  System.IO.hClose handle
+  Prelude.pure path
+
+verify :: Handler -> Module -> Task Error (List (Example, ExampleResult))
+verify handler Module {comments, moduleInfo} =
+  withContext handler moduleInfo comments <| \maybeContext ->
     comments
       |> examples
-      |> Async.mapConcurrently (verifyExample moduleInfo maybeContext)
+      |> List.map
+        ( \example ->
+            verifyExample handler moduleInfo maybeContext example
+              |> Task.map (\verified -> (example, ExampleVerifySuccess verified))
+              |> Task.onError (\err -> Task.succeed (example, ExampleVerifyFailed err))
+        )
+      |> Task.parallel
 
-verifyExample :: ModuleInfo -> Maybe Context -> Example -> Prelude.IO ExampleResult
-verifyExample modInfo maybeContext example =
+verifyExample :: Handler -> ModuleInfo -> Maybe Context -> Example -> Task EvalError Verified
+verifyExample handler modInfo maybeContext example =
   case example of
     VerifiedExample _ code -> do
-      result <-
-        Prelude.unlines code
-          |> eval modInfo maybeContext
-      case result of
-        Prelude.Left err ->
-          Prelude.pure (ExampleVerifyFailed example err)
-        Prelude.Right execResult ->
-          ExampleVerifySuccess example execResult
-            |> Prelude.pure
+      Prelude.unlines code
+        |> (eval handler) modInfo maybeContext
     UnverifiedExample _ code ->
-      NoExampleResult
-        |> ExampleVerifySuccess example
-        |> Prelude.pure
+      Task.succeed NoExampleResult
 
 preloadPaths :: Prelude.IO (List Prelude.FilePath)
 preloadPaths = Prelude.traverse DataPath.getDataFileName paths
@@ -121,22 +192,39 @@ makeImport importDecl =
     importToString (LHE.Syntax.IThingAll _ n) = getName n ++ "(..)"
     importToString (LHE.Syntax.IThingWith _ n ns) = getName n ++ "(" ++ (List.concat <| List.intersperse "," (List.map getCName ns)) ++ ")"
 
-eval ::
+evalIO ::
   ModuleInfo ->
   Maybe Context ->
   Prelude.String ->
-  Prelude.IO (Prelude.Either Hint.InterpreterError Verified)
-eval moduleInfo maybeContext s = do
+  Prelude.IO Verified
+evalIO moduleInfo maybeContext s = do
   let modulePath = moduleFilePath moduleInfo
-  let interpreter = case packageDbs moduleInfo of
-        [] -> Hint.runInterpreter
-        _ -> Hint.Unsafe.unsafeRunInterpreterWithArgs <| List.map Text.toList <| packageDbs moduleInfo
-
+  let interpreter =
+        case packageDbs moduleInfo of
+          [] -> Hint.runInterpreter
+          _ -> Hint.Unsafe.unsafeRunInterpreterWithArgs <| List.map Text.toList <| packageDbs moduleInfo
+          >> andThen
+            ( \case
+                Prelude.Left err -> Exception.throwIO err
+                Prelude.Right ok -> Prelude.pure ok
+            )
   interpreter <| do
     preload <- Hint.lift preloadPaths
 
-    -- TODO: Throw nice "unrecognized extension" error instead of ignoring here
-    let langs = List.filterMap (\ex -> Text.Read.readMaybe <| Text.toList ex) (languageExtensions moduleInfo)
+    let (unknownLangs, langs) =
+          languageExtensions moduleInfo
+            |> List.map
+              ( \ex -> case Text.Read.readMaybe (Text.toList ex) of
+                  Just lang -> (Nothing, Just lang)
+                  Nothing -> (Just ex, Nothing)
+              )
+            |> List.unzip
+            |> Tuple.mapBoth (List.filterMap identity) (List.filterMap identity)
+    -- Extensions we can safely ignore.
+    let ignoreExts = ["Haskell2010"]
+    if List.isEmpty (List.filter (\lang -> not <| List.member lang ignoreExts) unknownLangs)
+      then Prelude.pure ()
+      else Exception.throwIO (UnkownLanguageExtension unknownLangs)
     let searchPaths = List.map Text.toList <| importPaths moduleInfo
     Hint.set [Hint.languageExtensions Hint.:= langs, Hint.searchPath Hint.:= searchPaths]
 
@@ -180,44 +268,35 @@ getDefaultLanguageExtensions = List.filterMap <| trimPrefix "-X"
 getPackageDbs :: List Text -> List Text
 getPackageDbs options = List.concat [[l, r] | (l, r) <- Prelude.zip options (List.drop 1 options), l == "-package-db"]
 
-exampleFromText :: Prelude.String -> Example
+exampleFromText :: Prelude.String -> Result Error Example
 exampleFromText val =
   toExample emptySrcSpan (Prelude.lines val)
 
-parse :: Prelude.FilePath -> Prelude.IO Module
-parse path = do
-  parsed <- parseFileWithComments path
-  case parsed of
-    LHE.Parser.ParseOk ok -> Prelude.pure (toModule ok)
-    LHE.Parser.ParseFailed x msg ->
-      Debug.todo (Debug.toString x ++ Debug.toString msg)
+parse :: Handler -> Prelude.FilePath -> Task Error Module
+parse handler path = do
+  parsed <- (parseFileWithComments handler) path
+  toModule parsed
 
 -- Parses the file for imports / extensions / comments, but also will attempt to find the cradle for project default extensions and module directories
-tryLoadImplicitCradle :: Prelude.FilePath -> Module -> Prelude.IO Module
-tryLoadImplicitCradle path mod = do
-  cradle <- HIE.Bios.Cradle.loadImplicitCradle path
-  cradleResult <- HIE.Bios.Flags.getCompilerOptions path cradle
-
-  case cradleResult of
-    HIE.Bios.Types.CradleSuccess componentOptions -> do
-      let opts = List.map Text.fromList <| HIE.Bios.Types.componentOptions componentOptions
-      let searchPaths = getSearchPaths opts
-      let packageDbs = getPackageDbs opts
-      let defaultExtensions = getDefaultLanguageExtensions opts
-
-      let modInfo = moduleInfo mod
-
-      let exModInfo =
+tryLoadImplicitCradle :: Handler -> Prelude.FilePath -> Module -> Task Error Module
+tryLoadImplicitCradle handler path mod =
+  Task.onError (\_ -> Task.succeed mod) <| do
+    cradle <- (loadImplicitCradle handler) path
+    componentOptions <- (getCompilerOptions handler) path cradle
+    let opts = List.map Text.fromList <| HIE.Bios.Types.componentOptions componentOptions
+    let searchPaths = getSearchPaths opts
+    let packageDbs = getPackageDbs opts
+    let defaultExtensions = getDefaultLanguageExtensions opts
+    let modInfo = moduleInfo mod
+    Task.succeed
+      mod
+        { moduleInfo =
             modInfo
               { languageExtensions = defaultExtensions ++ languageExtensions modInfo,
                 importPaths = searchPaths,
                 packageDbs = packageDbs
               }
-
-      Prelude.return mod {moduleInfo = exModInfo}
-    err ->
-      let _ = Debug.log "Failed to load cradle with error" err
-       in Prelude.return mod
+        }
 
 examples :: List Comment -> List Example
 examples =
@@ -242,26 +321,20 @@ data Context = Context
     contextModuleName :: Text
   }
 
-withContext :: ModuleInfo -> List Comment -> (Maybe Context -> Prelude.IO a) -> Prelude.IO a
-withContext modInfo comments go = do
+withContext :: Handler -> ModuleInfo -> List Comment -> (Maybe Context -> Task Error a) -> Task Error a
+withContext handler modInfo comments go = do
   let contextModuleName = "HaskellVerifiedExamplesContext"
   case contextBlocks comments of
     [] -> go Nothing
-    xs ->
-      withTempFile
-        ( \path handle -> do
-            _ <- System.IO.hPutStrLn handle ("module " ++ Text.toList contextModuleName ++ " where")
-            _ <-
-              modInfo
-                |> imports
-                |> List.map renderImport
-                |> Prelude.traverse (System.IO.hPutStrLn handle)
-            xs
-              |> Prelude.unlines
-              |> System.IO.hPutStr handle
-            Prelude.pure ()
-        )
-        (\contextModulePath -> go (Just Context {contextModulePath, contextModuleName}))
+    xs -> do
+      contextModulePath <-
+        [ ["module " ++ Text.toList contextModuleName ++ " where"],
+          List.map renderImport (imports modInfo),
+          xs
+          ]
+          |> List.concat
+          |> writeTempFile handler
+      go (Just Context {contextModulePath, contextModuleName})
 
 renderImport :: Hint.ModuleImport -> Prelude.String
 renderImport m =
@@ -282,30 +355,35 @@ toModule ::
   ( LHE.Syntax.Module LHE.SrcLoc.SrcSpanInfo,
     List LHE.Comments.Comment
   ) ->
-  Module
+  Task Error Module
 toModule parsed =
   case parsed of
-    (LHE.Syntax.Module moduleSource moduleHead pragmas imports _, cs) ->
+    (LHE.Syntax.Module moduleSource moduleHead pragmas imports _, cs) -> do
       let moduleName = case moduleHead of
             (Just (LHE.Syntax.ModuleHead _ (LHE.Syntax.ModuleName _ name) _ _)) -> Just <| Text.fromList name
             Nothing -> Nothing
           languageExtensions = [Text.fromList n | LHE.Syntax.LanguagePragma _ ns <- pragmas, (LHE.Syntax.Ident _ n) <- ns]
-       in Module
-            { moduleInfo =
-                ModuleInfo
-                  { moduleName,
-                    moduleSource,
-                    languageExtensions,
-                    imports = List.map makeImport imports,
-                    importPaths = [],
-                    packageDbs = []
-                  },
-              comments = toComments cs
-            }
-    _ ->
-      Debug.todo "TODO unsupported module type"
+      comments <-
+        toComments cs
+          |> \case
+            Ok ok -> Task.succeed ok
+            Err err -> Task.fail err
+      Task.succeed
+        Module
+          { moduleInfo =
+              ModuleInfo
+                { moduleName,
+                  moduleSource,
+                  languageExtensions,
+                  imports = List.map makeImport imports,
+                  importPaths = [],
+                  packageDbs = []
+                },
+            comments
+          }
+    _ -> Task.fail UnsupportedModuleType
 
-toComments :: List LHE.Comments.Comment -> List Comment
+toComments :: List LHE.Comments.Comment -> Result Error (List Comment)
 toComments cs =
   cs
     |> mergeComments [] False
@@ -317,7 +395,7 @@ toComments cs =
               comments
                 |> List.map (commentValue >> Prelude.dropWhile (/= '>') >> Prelude.drop 2)
                 |> toExample (commentsSrcSpan comments)
-                |> CodeBlockComment
+                |> Result.map CodeBlockComment
                 |> Just
             ContextBlock ->
               comments
@@ -326,8 +404,10 @@ toComments cs =
                 |> Data.List.init
                 |> List.map (Prelude.drop 1)
                 |> ContextBlockComment (commentsSrcSpan comments)
+                |> Ok
                 |> Just
       )
+    |> combineResults
 
 data CommentType = CodeBlock | PlainText | ContextBlock
   deriving (Show, Eq)
@@ -382,18 +462,18 @@ commentsSrcSpan (LHE.Comments.Comment _ first _ : rest) =
 emptySrcSpan :: LHE.SrcLoc.SrcSpan
 emptySrcSpan = LHE.SrcLoc.mkSrcSpan LHE.SrcLoc.noLoc LHE.SrcLoc.noLoc
 
-toExample :: LHE.SrcLoc.SrcSpan -> List Prelude.String -> Example
+toExample :: LHE.SrcLoc.SrcSpan -> List Prelude.String -> Result Error Example
 toExample srcSpan source =
   case LHE.Lexer.lexTokenStream (Prelude.unlines source) of
     LHE.Parser.ParseOk tokens ->
-      if Foldable.any ((== LHE.Lexer.VarSym "==>") << LHE.Lexer.unLoc) tokens
-        then VerifiedExample srcSpan source
-        else UnverifiedExample srcSpan source
-    LHE.Parser.ParseFailed _ msg ->
-      let _ = Debug.log "msg" msg
-       in Debug.todo "TODO"
+      Ok
+        <| if Foldable.any ((== LHE.Lexer.VarSym "==>") << LHE.Lexer.unLoc) tokens
+          then VerifiedExample srcSpan source
+          else UnverifiedExample srcSpan source
+    LHE.Parser.ParseFailed srcLoc msg ->
+      Err (ParseFailed srcLoc msg)
 
-parseFileWithComments ::
+parseFileWithCommentsIO ::
   Prelude.FilePath ->
   Prelude.IO
     ( LHE.Parser.ParseResult
@@ -401,7 +481,7 @@ parseFileWithComments ::
           List LHE.Comments.Comment
         )
     )
-parseFileWithComments path =
+parseFileWithCommentsIO path =
   LHE.parseFileWithComments (LHE.defaultParseMode {LHE.parseFilename = path, LHE.extensions = [LHE.EnableExtension LHE.CPP]}) path
 
 data Reporter
@@ -411,22 +491,11 @@ data Reporter
   | LogFile
   deriving (Eq)
 
-report :: List Reporter -> List (ModuleInfo, List ExampleResult) -> Prelude.IO ()
-report reporters results =
+report :: List Reporter -> Result Error (List (ModuleInfo, List (Example, ExampleResult))) -> Prelude.IO ()
+report reporters result =
   [ if List.member Stdout reporters
-      then Just (Reporter.Stdout.report System.IO.stdout results)
+      then Just (Reporter.Stdout.report System.IO.stdout result)
       else Nothing
   ]
     |> List.filterMap identity
     |> Async.mapConcurrently_ identity
-
-withTempFile ::
-  (System.IO.FilePath -> System.IO.Handle -> Prelude.IO ()) ->
-  (Prelude.FilePath -> Prelude.IO a) ->
-  Prelude.IO a
-withTempFile before go = do
-  (path, handle) <-
-    System.IO.openTempFile "/tmp" "HaskellVerifiedExamples.hs"
-  _ <- before path handle
-  System.IO.hClose handle
-  go path

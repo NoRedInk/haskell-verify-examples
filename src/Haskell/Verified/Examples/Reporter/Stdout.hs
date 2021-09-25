@@ -1,8 +1,5 @@
 -- | Module for presenting example results on the console.
-module Haskell.Verified.Examples.Reporter.Stdout
-  ( report,
-  )
-where
+module Haskell.Verified.Examples.Reporter.Stdout (report) where
 
 import qualified Control.Exception as Exception
 import qualified Data.ByteString as BS
@@ -26,8 +23,12 @@ import qualified Text.Colour.Capabilities
 import qualified Text.Show.Pretty
 import qualified Prelude
 
-report :: System.IO.Handle -> List (ModuleInfo, List ExampleResult) -> Prelude.IO ()
-report handle results = do
+report :: System.IO.Handle -> Result Error (List (ModuleInfo, List (Example, ExampleResult))) -> Prelude.IO ()
+report handle (Ok results) = reportResults handle results
+report handle (Err err) = reportError handle err
+
+reportResults :: System.IO.Handle -> List (ModuleInfo, List (Example, ExampleResult)) -> Prelude.IO ()
+reportResults handle results = do
   window <- Terminal.size
   let terminalWidth = case window of
         Just Terminal.Window {Terminal.width} -> width - 4 -- indentation
@@ -40,6 +41,16 @@ report handle results = do
           |> examplesSummary
           |> renderSummary
   (separateBlocks perModuleResults ++ [chunk "\n\n"] ++ summary)
+    |> Text.Colour.hPutChunksWith terminalCapabilities handle
+  System.IO.hFlush handle
+
+reportError :: System.IO.Handle -> Error -> Prelude.IO ()
+reportError handle err = do
+  terminalCapabilities <- Text.Colour.Capabilities.getTerminalCapabilitiesFromHandle handle
+  err
+    |> Debug.toString
+    |> chunk
+    |> List.singleton
     |> Text.Colour.hPutChunksWith terminalCapabilities handle
   System.IO.hFlush handle
 
@@ -78,18 +89,18 @@ renderSummaryForType prefix examples =
           |> List.map (\src -> chunk ("\n  * " ++ Text.fromList src))
       )
 
-examplesSummary :: List ExampleResult -> Summary
+examplesSummary :: List (Example, ExampleResult) -> Summary
 examplesSummary =
   List.foldl
-    ( \result summary ->
+    ( \(example, result) summary ->
         case result of
-          ExampleVerifySuccess example Verified ->
+          ExampleVerifySuccess Verified ->
             summary {verified = example : verified summary}
-          ExampleVerifySuccess example (Unverified _ _) ->
+          ExampleVerifySuccess (Unverified _ _) ->
             summary {unverified = example : unverified summary}
-          ExampleVerifySuccess example NoExampleResult ->
+          ExampleVerifySuccess NoExampleResult ->
             summary {noExamples = example : noExamples summary}
-          ExampleVerifyFailed example _ -> summary {evaluationFailed = example : evaluationFailed summary}
+          ExampleVerifyFailed _ -> summary {evaluationFailed = example : evaluationFailed summary}
     )
     (Summary [] [] [] [])
 
@@ -98,9 +109,9 @@ augmentSrc (modInfo, xs) = do
   maybeModule <- readSrc (moduleFilePath modInfo)
   Prelude.pure (modInfo, xs, maybeModule)
 
-renderPerModule :: Int -> (ModuleInfo, List ExampleResult, Maybe BS.ByteString) -> List Chunk
+renderPerModule :: Int -> (ModuleInfo, List (Example, ExampleResult), Maybe BS.ByteString) -> List Chunk
 renderPerModule terminalWidth (modInfo, exampleResults, maybeModule) =
-  if examplesVerified exampleResults
+  if examplesVerified (List.map Tuple.second exampleResults)
     then []
     else
       let renderedExampleResults =
@@ -113,38 +124,41 @@ renderPerModule terminalWidth (modInfo, exampleResults, maybeModule) =
               Nothing -> "Examples unverified."
        in red (chunk header) : chunk "\n" : renderedExampleResults
 
-renderExampleWithSrc :: Int -> Maybe BS.ByteString -> ExampleResult -> List Chunk
+renderExampleWithSrc :: Int -> Maybe BS.ByteString -> (Example, ExampleResult) -> List Chunk
 renderExampleWithSrc terminalWidth contents result =
   case renderExample terminalWidth result of
     [] -> []
     renderedExamples ->
       List.concat
         [ result
-            |> exampleFromResult
+            |> Tuple.first
             |> exampleSrcSpan
             |> renderSrcSpan contents,
           renderedExamples
         ]
 
-renderExample :: Int -> ExampleResult -> List Chunk
-renderExample _ (ExampleVerifyFailed example err) =
+renderExample :: Int -> (Example, ExampleResult) -> List Chunk
+renderExample _ (example, ExampleVerifyFailed err) =
   case err of
-    Hint.UnknownError unknownError ->
+    UnkownLanguageExtension exts ->
+      chunk "Unknown extensions:\n" :
+      List.map (\ext -> chunk ("* " ++ ext)) exts
+    InterpreterError (Hint.UnknownError unknownError) ->
       [ chunk "Unknown error:\n",
         chunk <| Text.fromList unknownError
       ]
-    Hint.WontCompile ghcErrors ->
+    InterpreterError (Hint.WontCompile ghcErrors) ->
       chunk "The example doesn't compile:\n" :
       List.map (chunk << Text.fromList << Hint.errMsg) ghcErrors
-    Hint.NotAllowed msg ->
+    InterpreterError (Hint.NotAllowed msg) ->
       [ chunk "Not allowed:\n",
         chunk <| Text.fromList msg
       ]
-    Hint.GhcException msg ->
+    InterpreterError (Hint.GhcException msg) ->
       [ chunk "GHC exception:\n",
         chunk <| Text.fromList msg
       ]
-renderExample terminalWidth (ExampleVerifySuccess example verified) =
+renderExample terminalWidth (example, ExampleVerifySuccess verified) =
   case verified of
     Verified -> []
     Unverified expected actual ->

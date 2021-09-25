@@ -1,16 +1,3 @@
-Examples of module Simple unverified.
-
-test/assets/Simple.hs:15
-[2m  10: -- > ==> 1
-[m[2m  11: --
-[m[2m  12: -- > test + test
-[m[2m  13: -- > ==> 2
-[m[2m  14: --
-[m✗ 15: -- > test + test
-[2m  16: test = 1
-[m[2m  17: 
-[mNo expected result for example.
-
 Examples of module UnverifiedExamples unverified.
 
 test/assets/UnverifiedExamples.hs:12
@@ -91,54 +78,13 @@ test/assets/UnverifiedExamples.hs:29
       In an equation for ‘e_112341’:
           e_112341 = [1, 2, 3, ....] |> map (+ 1) ==> True
 
-Examples of module WithContext unverified.
-
-test/assets/WithContext.hs:21
-[2m  16: --
-[m[2m  17: -- Examples:
-[m[2m  18: --
-[m[2m  19: -- > identity @(Maybe [Char]) test ==> result
-[m[2m  20: --
-[m✗ 21: -- > Just "b" ==> result
-[2m  22: test :: Maybe [Char]
-[m[2m  23: test = Just "a"
-[m[2m  24: 
-[mThe example was incorrect and couldn't be verified.
-        ▼
-"Just \"b\""
-╷
-│ ==>
-╵
-"Just \"a\""
-        ▲
-
-Examples unverified.
-
-test/assets/Headless.hs:3
-[2m  -2: -- > 1 ==> 1
-[m[2m  -1: --
-[m[2m  0: -- > 1 ==> 2
-[m[2m  1: testHeadless = 1
-[m[2m  2: 
-[mThe example was incorrect and couldn't be verified.
- ▼
-"1"
-╷
-│ ==>
-╵
-"2"
- ▲
-
 [4mNot all examples verified![m
-Verified: 15
-Unverified: 4
+Verified: 1
+Unverified: 2
   In these files:
-  * test/assets/Headless.hs
   * test/assets/UnverifiedExamples.hs
-  * test/assets/WithContext.hs
-No examples: 2
+No examples: 1
   In these files:
-  * test/assets/Simple.hs
   * test/assets/UnverifiedExamples.hs
 Evaluation failed: 1
   In these files:

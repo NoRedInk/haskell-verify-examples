@@ -12,6 +12,8 @@ import qualified Prelude
 
 main :: Prelude.IO ()
 main = do
+  handler <- HVE.handler
+  logHandler <- Platform.silentHandler
   cwd <- System.Directory.getCurrentDirectory
   params <- System.Environment.getArgs
   files <- case params of
@@ -19,12 +21,16 @@ main = do
     [] -> Find.find (noRCS &&? noDist) (Find.extension ==? ".hs") cwd
   results <-
     files
-      |> Prelude.traverse
+      |> List.map
         ( \modulePath -> do
-            parsed <- HVE.parse modulePath >>= HVE.tryLoadImplicitCradle modulePath
-            results <- HVE.verify parsed
-            Prelude.pure (HVE.moduleInfo parsed, results)
+            parsed <-
+              HVE.parse handler modulePath
+                |> Task.andThen (HVE.tryLoadImplicitCradle handler modulePath)
+            results <- HVE.verify handler parsed
+            Task.succeed (HVE.moduleInfo parsed, results)
         )
+      |> Task.parallel
+      |> Task.attempt logHandler
   HVE.report [HVE.Stdout] results
 
 noRCS :: Find.RecursionPredicate

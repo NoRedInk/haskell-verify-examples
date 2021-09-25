@@ -1,6 +1,7 @@
 module Haskell.Verified.Examples.Internal where
 
 import qualified Control.Concurrent.Async as Async
+import qualified Control.Exception.Safe as Exception
 import qualified Data.Foldable as Foldable
 import qualified HIE.Bios.Cradle
 import qualified HIE.Bios.Environment
@@ -20,6 +21,20 @@ import qualified Paths_haskell_verified_examples as DataPath
 import qualified System.IO
 import qualified Text.Read
 import qualified Prelude
+
+data Error
+  = ParseFailed LHE.SrcLoc.SrcLoc Prelude.String
+  | CradleFailed HIE.Bios.Types.CradleError
+  | UnsupportedModuleType
+  | EvalFailed EvalError
+  deriving (Show)
+
+data EvalError
+  = UnkownLanguageExtension (List Text)
+  | InterpreterError Hint.InterpreterError
+  deriving (Show)
+
+instance Exception.Exception EvalError
 
 data Module = Module
   { moduleInfo :: ModuleInfo,
@@ -52,22 +67,21 @@ exampleSrcSpan (VerifiedExample span _) = span
 exampleSrcSpan (UnverifiedExample span _) = span
 
 data ExampleResult
-  = ExampleVerifySuccess Example Verified
-  | ExampleVerifyFailed Example Hint.InterpreterError
+  = ExampleVerifySuccess Verified
+  | ExampleVerifyFailed EvalError
   deriving (Show)
 
 examplesVerified :: List ExampleResult -> Bool
 examplesVerified = List.all exampleVerified
 
 exampleVerified :: ExampleResult -> Bool
-exampleVerified (ExampleVerifySuccess _ Verified) = True
-exampleVerified (ExampleVerifySuccess _ _) = False
-exampleVerified (ExampleVerifyFailed _ _) = False
-
-exampleFromResult :: ExampleResult -> Example
-exampleFromResult (ExampleVerifySuccess example _) = example
-exampleFromResult (ExampleVerifyFailed example _) = example
+exampleVerified (ExampleVerifySuccess Verified) = True
+exampleVerified (ExampleVerifySuccess _) = False
+exampleVerified (ExampleVerifyFailed _) = False
 
 moduleFilePath :: ModuleInfo -> Prelude.FilePath
 moduleFilePath =
   LHE.SrcLoc.srcSpanFilename << LHE.SrcLoc.srcInfoSpan << moduleSource
+
+combineResults :: List (Result x a) -> Result x (List a)
+combineResults = List.foldr (Result.map2 (:)) (Ok [])
