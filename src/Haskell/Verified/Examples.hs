@@ -105,14 +105,6 @@ handler = do
         runCpphs
       }
 
-writeTempFileIO :: List Prelude.String -> Prelude.IO Prelude.FilePath
-writeTempFileIO contents = do
-  (path, handle) <-
-    System.IO.openTempFile "/tmp" "HaskellVerifiedExamples.hs"
-  _ <- Prelude.traverse (System.IO.hPutStrLn handle) contents
-  System.IO.hClose handle
-  Prelude.pure path
-
 verify :: Handler -> CradleInfo -> Module -> Task Error (List (Example, ExampleResult))
 verify handler cradleInfo Module {comments, moduleInfo} =
   withContext handler moduleInfo comments <| \maybeContext ->
@@ -141,17 +133,17 @@ verifyExample Handler {eval} cradleInfo moduleInfo maybeContext example =
       Task.succeed NoExampleResult
 
 preloadPaths :: Prelude.IO (List Prelude.FilePath)
-preloadPaths = Prelude.traverse DataPath.getDataFileName paths
-  where
-    paths =
-      [ "src/Haskell/Verified/Examples/RunTime.hs",
-        "src/Haskell/Verified/Examples/Verified.hs"
-      ]
+preloadPaths =
+  Prelude.traverse
+    DataPath.getDataFileName
+    [ "src/Haskell/Verified/Examples/RunTime.hs",
+      "src/Haskell/Verified/Examples/Verified.hs"
+    ]
 
 makeImport :: LHE.Syntax.ImportDecl LHE.SrcLoc.SrcSpanInfo -> Hint.ModuleImport
 makeImport importDecl =
   Hint.ModuleImport
-    { Hint.modName = getModName <| LHE.Syntax.importModule importDecl,
+    { Hint.modName = getModName (LHE.Syntax.importModule importDecl),
       Hint.modQual = modQual,
       Hint.modImp = importList
     }
@@ -195,75 +187,55 @@ evalIO CradleInfo {packageDbs, languageExtensions, importPaths} moduleInfo maybe
             packageDbs
               |> List.map unPackageDb
               |> Hint.Unsafe.unsafeRunInterpreterWithArgs
-          >> andThen
-            ( \case
-                Prelude.Left err -> Exception.throwIO err
-                Prelude.Right ok -> Prelude.pure ok
-            )
-  interpreter <| do
-    preload <- Hint.lift preloadPaths
+  result <-
+    interpreter <| do
+      preload <- Hint.lift preloadPaths
 
-    let (unknownLangs, langs) =
-          languageExtensions ++ moduleLanguageExtensions moduleInfo
-            |> List.map
-              ( \(LanguageExtension ex) -> case Text.Read.readMaybe ex of
-                  Just lang -> (Nothing, Just lang)
-                  Nothing -> (Just ex, Nothing)
-              )
-            |> List.unzip
-            |> Tuple.mapBoth (List.filterMap identity) (List.filterMap identity)
-    -- Extensions we can safely ignore.
-    let ignoreExts = ["Haskell2010"]
-    if List.isEmpty (List.filter (\lang -> not <| List.member lang ignoreExts) unknownLangs)
-      then Prelude.pure ()
-      else Exception.throwIO (UnkownLanguageExtension unknownLangs)
-    let searchPaths = List.map unImportPath importPaths
-    Hint.set [Hint.languageExtensions Hint.:= langs, Hint.searchPath Hint.:= searchPaths]
+      let (unknownLangs, langs) =
+            languageExtensions ++ moduleLanguageExtensions moduleInfo
+              |> List.map
+                ( \(LanguageExtension ex) -> case Text.Read.readMaybe ex of
+                    Just lang -> (Nothing, Just lang)
+                    Nothing -> (Just ex, Nothing)
+                )
+              |> List.unzip
+              |> Tuple.mapBoth (List.filterMap identity) (List.filterMap identity)
+      -- Extensions we can safely ignore.
+      let ignoreExts = ["Haskell2010"]
+      if List.isEmpty (List.filter (\lang -> not (List.member lang ignoreExts)) unknownLangs)
+        then Prelude.pure ()
+        else Exception.throwIO (UnkownLanguageExtension unknownLangs)
+      let searchPaths = List.map unImportPath importPaths
+      Hint.set [Hint.languageExtensions Hint.:= langs, Hint.searchPath Hint.:= searchPaths]
 
-    [ if moduleFilePath moduleInfo == ""
-        then []
-        else [moduleFilePath moduleInfo],
-      case maybeContext of
-        Nothing -> []
-        Just Context {contextModulePath} -> [contextModulePath],
-      preload
-      ]
-      |> List.concat
-      |> Hint.loadModules
+      [ if moduleFilePath moduleInfo == ""
+          then []
+          else [moduleFilePath moduleInfo],
+        case maybeContext of
+          Nothing -> []
+          Just Context {contextModulePath} -> [contextModulePath],
+        preload
+        ]
+        |> List.concat
+        |> Hint.loadModules
 
-    case moduleName moduleInfo of
-      Just name -> Hint.setTopLevelModules [Text.toList name]
-      Nothing -> Prelude.return ()
+      case moduleName moduleInfo of
+        Just name -> Hint.setTopLevelModules [Text.toList name]
+        Nothing -> Prelude.return ()
 
-    let exampleImports =
-          [ Just "Haskell.Verified.Examples.RunTime",
-            Just "Haskell.Verified.Examples.Verified",
-            Maybe.map contextModuleName maybeContext
-          ]
-            |> List.filterMap identity
-            |> List.map makeSimpleImport
+      let exampleImports =
+            [ Just "Haskell.Verified.Examples.RunTime",
+              Just "Haskell.Verified.Examples.Verified",
+              Maybe.map contextModuleName maybeContext
+            ]
+              |> List.filterMap identity
+              |> List.map makeSimpleImport
 
-    Hint.setImportsF (exampleImports ++ imports moduleInfo)
-    Hint.interpret s (Hint.as :: Verified)
-
-trimPrefix :: Prelude.String -> Prelude.String -> Maybe Prelude.String
-trimPrefix prefix text =
-  if Data.List.isPrefixOf prefix text
-    then Just <| Data.List.drop (Prelude.length prefix) text
-    else Nothing
-
-getSearchPaths :: List Prelude.String -> List Prelude.String
-getSearchPaths = List.filterMap <| trimPrefix "-i"
-
-getDefaultLanguageExtensions :: List Prelude.String -> List Prelude.String
-getDefaultLanguageExtensions = List.filterMap <| trimPrefix "-X"
-
-getPackageDbs :: List Prelude.String -> List Prelude.String
-getPackageDbs options = List.concat [[l, r] | (l, r) <- Prelude.zip options (List.drop 1 options), l == "-package-db"]
-
-exampleFromText :: Prelude.String -> Result Error Example
-exampleFromText val =
-  toExample emptySrcSpan (Prelude.lines val)
+      Hint.setImportsF (exampleImports ++ imports moduleInfo)
+      Hint.interpret s (Hint.as :: Verified)
+  case result of
+    Prelude.Left err -> Exception.throwIO err
+    Prelude.Right ok -> Prelude.pure ok
 
 parse :: Handler -> Prelude.FilePath -> Task Error Module
 parse Handler {readFile, runCpphs} path = do
@@ -300,10 +272,9 @@ tryLoadImplicitCradle handler path =
 examples :: List Comment -> List Example
 examples =
   List.filterMap
-    ( \c ->
-        case c of
-          ContextBlockComment _ _ -> Nothing
-          CodeBlockComment example -> Just example
+    ( \case
+        ContextBlockComment _ _ -> Nothing
+        CodeBlockComment example -> Just example
     )
 
 contextBlocks :: List Comment -> List Prelude.String
@@ -359,14 +330,12 @@ toModule parsed =
   case parsed of
     (LHE.Syntax.Module moduleSource moduleHead pragmas imports _, cs) -> do
       let moduleName = case moduleHead of
-            (Just (LHE.Syntax.ModuleHead _ (LHE.Syntax.ModuleName _ name) _ _)) -> Just <| Text.fromList name
+            (Just (LHE.Syntax.ModuleHead _ (LHE.Syntax.ModuleName _ name) _ _)) -> Just (Text.fromList name)
             Nothing -> Nothing
       let moduleLanguageExtensions = getLanguageExtensions pragmas
-      comments <-
-        toComments cs
-          |> \case
-            Ok ok -> Task.succeed ok
-            Err err -> Task.fail err
+      comments <- case toComments cs of
+        Ok ok -> Task.succeed ok
+        Err err -> Task.fail err
       Task.succeed
         Module
           { moduleInfo =
@@ -499,3 +468,29 @@ report reporters result =
   ]
     |> List.filterMap identity
     |> Async.mapConcurrently_ identity
+
+writeTempFileIO :: List Prelude.String -> Prelude.IO Prelude.FilePath
+writeTempFileIO contents = do
+  (path, handle) <- System.IO.openTempFile "/tmp" "HaskellVerifiedExamples.hs"
+  _ <- Prelude.traverse (System.IO.hPutStrLn handle) contents
+  System.IO.hClose handle
+  Prelude.pure path
+
+trimPrefix :: Prelude.String -> Prelude.String -> Maybe Prelude.String
+trimPrefix prefix text =
+  if Data.List.isPrefixOf prefix text
+    then Just <| Data.List.drop (Prelude.length prefix) text
+    else Nothing
+
+getSearchPaths :: List Prelude.String -> List Prelude.String
+getSearchPaths = List.filterMap <| trimPrefix "-i"
+
+getDefaultLanguageExtensions :: List Prelude.String -> List Prelude.String
+getDefaultLanguageExtensions = List.filterMap <| trimPrefix "-X"
+
+getPackageDbs :: List Prelude.String -> List Prelude.String
+getPackageDbs options = List.concat [[l, r] | (l, r) <- Prelude.zip options (List.drop 1 options), l == "-package-db"]
+
+exampleFromText :: Prelude.String -> Result Error Example
+exampleFromText val =
+  toExample emptySrcSpan (Prelude.lines val)
