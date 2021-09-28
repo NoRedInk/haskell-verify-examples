@@ -17,7 +17,6 @@ Module
                   , SrcSpan "test/assets/WithContext.hs" 24 1 24 1
                   ]
               }
-        , languageExtensions = [ "TypeApplications" , "NoImplicitPrelude" ]
         , imports =
             [ ModuleImport
                 { modName = "NriPrelude"
@@ -25,8 +24,10 @@ Module
                 , modImp = NoImportList
                 }
             ]
-        , importPaths = []
-        , packageDbs = []
+        , moduleLanguageExtensions =
+            [ LanguageExtension { unLanguageExtension = "TypeApplications" }
+            , LanguageExtension { unLanguageExtension = "NoImplicitPrelude" }
+            ]
         }
   , comments =
       [ ContextBlockComment

@@ -142,7 +142,7 @@ renderExample _ (example, ExampleVerifyFailed err) =
   case err of
     UnkownLanguageExtension exts ->
       chunk "Unknown extensions:\n" :
-      List.map (\ext -> chunk ("* " ++ ext)) exts
+      List.map (\ext -> chunk ("* " ++ Text.fromList ext)) exts
     InterpreterError (Hint.UnknownError unknownError) ->
       [ chunk "Unknown error:\n",
         chunk <| Text.fromList unknownError

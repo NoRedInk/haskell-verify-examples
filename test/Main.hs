@@ -4,6 +4,7 @@ import qualified Control.Concurrent.Async as Async
 import qualified Data.Text.IO
 import qualified Expect
 import qualified Haskell.Verified.Examples as HVE
+import qualified Haskell.Verified.Examples.Internal as Internal
 import qualified Haskell.Verified.Examples.Reporter.Stdout as Reporter.Stdout
 import qualified Language.Haskell.Exts.SrcLoc as LHE.SrcLoc
 import qualified System.Directory as Directory
@@ -50,90 +51,6 @@ tests assets =
               |> Expect.equalToContentsOf "test/golden-results/parse-with-context.hs"
         ],
       describe
-        "verifyExample"
-        [ test "verfies an example when it succeeds" <| \() -> do
-            example <- Expect.fromResult (HVE.exampleFromText "1 + 1 ==> 2")
-            handler <- Expect.fromIO HVE.handler
-            result <-
-              example
-                |> HVE.verifyExample
-                  handler
-                  (HVE.shimModuleWithImports ["NriPrelude"])
-                  Nothing
-                |> Expect.succeeds
-            result
-              |> Debug.toString
-              |> Expect.equalToContentsOf "test/golden-results/verifyExample-verified.hs",
-          test "verfies an example when it fails" <| \() -> do
-            example <- Expect.fromResult (HVE.exampleFromText "1 + 1 ==> 3")
-            handler <- Expect.fromIO HVE.handler
-            result <-
-              example
-                |> HVE.verifyExample
-                  handler
-                  (HVE.shimModuleWithImports ["NriPrelude"])
-                  Nothing
-                |> Expect.succeeds
-            result
-              |> Debug.toString
-              |> Expect.equalToContentsOf "test/golden-results/verifyExample-unverified.hs",
-          test "verfies multiline example (succeeds)" <| \() ->
-            do
-              handler <- Expect.fromIO HVE.handler
-              example <-
-                [ "[ 1",
-                  ", 2",
-                  ", 3",
-                  "]",
-                  "|> List.map (+ 1)",
-                  "==>",
-                  "[ 2",
-                  ", 3",
-                  ", 4",
-                  "]"
-                  ]
-                  |> Prelude.unlines
-                  |> HVE.exampleFromText
-                  |> Expect.fromResult
-              result <-
-                example
-                  |> HVE.verifyExample
-                    handler
-                    (HVE.shimModuleWithImports ["List", "NriPrelude"])
-                    Nothing
-                  |> Expect.succeeds
-              result
-                |> Debug.toString
-                |> Expect.equalToContentsOf "test/golden-results/verifyExample-multiline-verified.hs",
-          test "verfies multiline example (fails)" <| \() -> do
-            handler <- Expect.fromIO HVE.handler
-            example <-
-              [ "[ 1",
-                ", 2",
-                ", 3",
-                "]",
-                "|> List.map (+ 1)",
-                "==>",
-                "[ 2",
-                ", 3",
-                ", 5",
-                "]"
-                ]
-                |> Prelude.unlines
-                |> HVE.exampleFromText
-                |> Expect.fromResult
-            result <-
-              example
-                |> HVE.verifyExample
-                  handler
-                  (HVE.shimModuleWithImports ["List", "NriPrelude"])
-                  Nothing
-                |> Expect.succeeds
-            result
-              |> Debug.toString
-              |> Expect.equalToContentsOf "test/golden-results/verifyExample-multiline-unverified.hs"
-        ],
-      describe
         "Integration"
         ( List.map
             ( \modulePath ->
@@ -142,7 +59,7 @@ tests assets =
                   results <-
                     Expect.succeeds <| do
                       parsed <- HVE.parse handler ("test/assets/" ++ modulePath)
-                      result <- HVE.verify handler parsed
+                      result <- HVE.verify handler Internal.emptyCradleInfo parsed
                       Task.succeed (HVE.moduleInfo parsed, result)
                   contents <-
                     withTempFile (\handle -> Reporter.Stdout.report handle (Ok [results]))
