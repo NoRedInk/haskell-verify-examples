@@ -31,7 +31,7 @@ data Error
   deriving (Show)
 
 data EvalError
-  = UnkownLanguageExtension (List Text)
+  = UnkownLanguageExtension (List Prelude.String)
   | InterpreterError Hint.InterpreterError
   deriving (Show)
 
@@ -46,11 +46,30 @@ data Module = Module
 data ModuleInfo = ModuleInfo
   { moduleName :: Maybe Text, -- Headless modules might not have a name
     moduleSource :: LHE.SrcSpanInfo,
-    languageExtensions :: List Text,
     imports :: List Hint.ModuleImport,
-    importPaths :: List Text,
-    packageDbs :: List Text
+    moduleLanguageExtensions :: List LanguageExtension
   }
+  deriving (Show)
+
+data CradleInfo = CradleInfo
+  { languageExtensions :: List LanguageExtension,
+    importPaths :: List ImportPath,
+    packageDbs :: List PackageDb
+  }
+
+emptyCradleInfo :: CradleInfo
+emptyCradleInfo = CradleInfo [] [] []
+
+newtype LanguageExtension = LanguageExtension
+  {unLanguageExtension :: Prelude.String}
+  deriving (Show)
+
+newtype ImportPath = ImportPath
+  {unImportPath :: Prelude.String}
+  deriving (Show)
+
+newtype PackageDb = PackageDb
+  {unPackageDb :: Prelude.String}
   deriving (Show)
 
 data Comment
@@ -86,3 +105,15 @@ moduleFilePath =
 
 combineResults :: List (Result x a) -> Result x (List a)
 combineResults = List.foldr (Result.map2 (:)) (Ok [])
+
+shimModuleWithImports :: List Text -> ModuleInfo
+shimModuleWithImports imports =
+  ModuleInfo
+    { moduleName = Nothing,
+      moduleSource = LHE.SrcLoc.noSrcSpan,
+      imports = List.map makeSimpleImport imports,
+      moduleLanguageExtensions = []
+    }
+
+makeSimpleImport :: Text -> Hint.ModuleImport
+makeSimpleImport name = Hint.ModuleImport (Text.toList name) Hint.NotQualified Hint.NoImportList

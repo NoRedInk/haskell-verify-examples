@@ -23,10 +23,9 @@ main = do
     files
       |> List.map
         ( \modulePath -> do
-            parsed <-
-              HVE.parse handler modulePath
-                |> Task.andThen (HVE.tryLoadImplicitCradle handler modulePath)
-            results <- HVE.verify handler parsed
+            parsed <- HVE.parse handler modulePath
+            cradleInfo <- HVE.tryLoadImplicitCradle handler modulePath
+            results <- HVE.verify handler cradleInfo parsed
             Task.succeed (HVE.moduleInfo parsed, results)
         )
       |> Task.parallel

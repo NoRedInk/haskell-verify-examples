@@ -15,7 +15,6 @@ Module
                   , SrcSpan "test/assets/Simple.hs" 17 1 17 1
                   ]
               }
-        , languageExtensions = [ "NoImplicitPrelude" ]
         , imports =
             [ ModuleImport
                 { modName = "NriPrelude"
@@ -23,8 +22,8 @@ Module
                 , modImp = NoImportList
                 }
             ]
-        , importPaths = []
-        , packageDbs = []
+        , moduleLanguageExtensions =
+            [ LanguageExtension { unLanguageExtension = "NoImplicitPrelude" } ]
         }
   , comments =
       [ CodeBlockComment
