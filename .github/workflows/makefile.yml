@@ -21,5 +21,5 @@ jobs:
           ~/.cabal/packages
           ~/.cabal/store
           dist-newstyle
-          nix/store/
+          /nix/store/
         key: ${{ runner.os }}-${{ matrix.ghc }}
