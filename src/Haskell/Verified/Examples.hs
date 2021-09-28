@@ -484,16 +484,19 @@ parseFileWithCommentsIO ::
     )
 parseFileWithCommentsIO path = do
   contents <- Prelude.readFile path
-  case LHE.readExtensions contents of
-    Nothing -> Prelude.pure <| parseContents contents
-    Just (_, exts) -> if not <| List.any (== LHE.EnableExtension LHE.CPP) exts
-                      then Prelude.pure <| parseContents contents
-                      else do
-                        -- Note: there is implicit magic happening here to preserve line numbers through preprocessor macros (like #if)
-                        -- runCpphs will drop #line commands into the output code where necessary which LHE will respect when generating source positions
-                        processedConents <- Cpphs.runCpphs Cpphs.defaultCpphsOptions path contents
-                        Prelude.pure <| parseContents processedConents
-  where parseContents = LHE.parseFileContentsWithComments (LHE.defaultParseMode {LHE.parseFilename = path})
+  let exts = case LHE.readExtensions contents of
+        Just (_, exts') -> exts'
+        Nothing -> []
+  contents' <-
+    if List.member (LHE.EnableExtension LHE.CPP) exts
+      then {-- Note: there is implicit magic happening here to preserve line numbers
+            through preprocessor macros (like #if) runCpphs will drop #line
+            commands into the output code where necessary which LHE will respect
+            when generating source positions -}
+        Cpphs.runCpphs Cpphs.defaultCpphsOptions path contents
+      else Prelude.pure contents
+  LHE.parseFileContentsWithComments (LHE.defaultParseMode {LHE.parseFilename = path}) contents'
+    |> Prelude.pure
 
 data Reporter
   = Stdout
