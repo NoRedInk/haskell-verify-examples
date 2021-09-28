@@ -47,13 +47,6 @@ import qualified Prelude
 
 data Handler = Handler
   { eval :: ModuleInfo -> Maybe Context -> Prelude.String -> Task EvalError Verified,
-    parseFileWithComments ::
-      Prelude.FilePath ->
-      Task
-        Error
-        ( LHE.Syntax.Module LHE.SrcLoc.SrcSpanInfo,
-          List LHE.Comments.Comment
-        ),
     loadImplicitCradle ::
       Prelude.FilePath ->
       Task Error (HIE.Bios.Types.Cradle HIE.Bios.Types.ComponentOptions),
@@ -61,7 +54,9 @@ data Handler = Handler
       Prelude.FilePath ->
       HIE.Bios.Types.Cradle HIE.Bios.Types.ComponentOptions ->
       Task Error HIE.Bios.Types.ComponentOptions,
-    writeTempFile :: List Prelude.String -> Task Error Prelude.FilePath
+    writeTempFile :: List Prelude.String -> Task Error Prelude.FilePath,
+    readFile :: Prelude.FilePath -> Task Error Prelude.String,
+    runCpphs :: Prelude.FilePath -> Prelude.String -> Task Error Prelude.String
   }
 
 handler :: Prelude.IO Handler
@@ -75,13 +70,14 @@ handler = do
           |> Exception.handle
             (\(err :: Hint.InterpreterError) -> Prelude.pure (Err (InterpreterError err)))
           |> Platform.doAnything doAnything
-  let parseFileWithComments path =
-        parseFileWithCommentsIO path
-          |> map
-            ( \case
-                LHE.Parser.ParseOk ok -> Ok ok
-                LHE.Parser.ParseFailed x msg -> Err (ParseFailed x msg)
-            )
+  let readFile path =
+        Prelude.readFile path
+          |> map Ok
+          |> Exception.handle (ReadFileFailed >> Err >> Prelude.pure)
+          |> Platform.doAnything doAnything
+  let runCpphs path contents =
+        Cpphs.runCpphs Cpphs.defaultCpphsOptions path contents
+          |> map Ok
           |> Platform.doAnything doAnything
   let loadImplicitCradle p =
         HIE.Bios.Cradle.loadImplicitCradle p
@@ -102,10 +98,11 @@ handler = do
   Prelude.pure
     Handler
       { eval,
-        parseFileWithComments,
         loadImplicitCradle,
         getCompilerOptions,
-        writeTempFile
+        writeTempFile,
+        readFile,
+        runCpphs
       }
 
 writeTempFileIO :: List Prelude.String -> Prelude.IO Prelude.FilePath
@@ -274,9 +271,22 @@ exampleFromText val =
   toExample emptySrcSpan (Prelude.lines val)
 
 parse :: Handler -> Prelude.FilePath -> Task Error Module
-parse handler path = do
-  parsed <- (parseFileWithComments handler) path
-  toModule parsed
+parse Handler {readFile, runCpphs} path = do
+  contents <- readFile path
+  let exts = case LHE.readExtensions contents of
+        Just (_, exts') -> exts'
+        Nothing -> []
+  contents' <-
+    -- Note: there is implicit magic happening here to preserve line numbers
+    -- through preprocessor macros (like #if) runCpphs will drop #line
+    -- commands into the output code where necessary which LHE will respect
+    -- when generating source positions -}
+    if List.member (LHE.EnableExtension LHE.CPP) exts
+      then runCpphs path contents
+      else Prelude.pure contents
+  case LHE.parseFileContentsWithComments (LHE.defaultParseMode {LHE.parseFilename = path}) contents' of
+    LHE.Parser.ParseOk ok -> toModule ok
+    LHE.Parser.ParseFailed x msg -> Task.fail (ParseFailed x msg)
 
 -- Parses the file for imports / extensions / comments, but also will attempt to find the cradle for project default extensions and module directories
 tryLoadImplicitCradle :: Handler -> Prelude.FilePath -> Module -> Task Error Module
@@ -473,30 +483,6 @@ toExample srcSpan source =
           else UnverifiedExample srcSpan source
     LHE.Parser.ParseFailed srcLoc msg ->
       Err (ParseFailed srcLoc msg)
-
-parseFileWithCommentsIO ::
-  Prelude.FilePath ->
-  Prelude.IO
-    ( LHE.Parser.ParseResult
-        ( LHE.Syntax.Module LHE.SrcLoc.SrcSpanInfo,
-          List LHE.Comments.Comment
-        )
-    )
-parseFileWithCommentsIO path = do
-  contents <- Prelude.readFile path
-  let exts = case LHE.readExtensions contents of
-        Just (_, exts') -> exts'
-        Nothing -> []
-  contents' <-
-    if List.member (LHE.EnableExtension LHE.CPP) exts
-      then {-- Note: there is implicit magic happening here to preserve line numbers
-            through preprocessor macros (like #if) runCpphs will drop #line
-            commands into the output code where necessary which LHE will respect
-            when generating source positions -}
-        Cpphs.runCpphs Cpphs.defaultCpphsOptions path contents
-      else Prelude.pure contents
-  LHE.parseFileContentsWithComments (LHE.defaultParseMode {LHE.parseFilename = path}) contents'
-    |> Prelude.pure
 
 data Reporter
   = Stdout

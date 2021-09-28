@@ -27,6 +27,7 @@ data Error
   | CradleFailed HIE.Bios.Types.CradleError
   | UnsupportedModuleType
   | EvalFailed EvalError
+  | ReadFileFailed Prelude.IOError
   deriving (Show)
 
 data EvalError
