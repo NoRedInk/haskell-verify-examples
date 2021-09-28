@@ -361,7 +361,7 @@ toModule parsed =
       let moduleName = case moduleHead of
             (Just (LHE.Syntax.ModuleHead _ (LHE.Syntax.ModuleName _ name) _ _)) -> Just <| Text.fromList name
             Nothing -> Nothing
-          languageExtensions = [n | LHE.Syntax.LanguagePragma _ ns <- pragmas, (LHE.Syntax.Ident _ n) <- ns]
+      let moduleLanguageExtensions = getLanguageExtensions pragmas
       comments <-
         toComments cs
           |> \case
@@ -373,12 +373,26 @@ toModule parsed =
               ModuleInfo
                 { moduleName,
                   moduleSource,
-                  moduleLanguageExtensions = List.map LanguageExtension languageExtensions,
+                  moduleLanguageExtensions,
                   imports = List.map makeImport imports
                 },
             comments
           }
     _ -> Task.fail UnsupportedModuleType
+
+getLanguageExtensions :: List (LHE.Syntax.ModulePragma l) -> List LanguageExtension
+getLanguageExtensions =
+  List.concatMap
+    ( \case
+        LHE.Syntax.LanguagePragma _ ns ->
+          List.filterMap
+            ( \case
+                LHE.Syntax.Ident _ n -> Just (LanguageExtension n)
+                _ -> Nothing
+            )
+            ns
+        _ -> []
+    )
 
 toComments :: List LHE.Comments.Comment -> Result Error (List Comment)
 toComments cs =
