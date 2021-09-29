@@ -4,7 +4,7 @@ Module
         { moduleName = Just "WithContext"
         , moduleSource =
             SrcSpanInfo
-              { srcInfoSpan = SrcSpan "test/assets/WithContext.hs" 1 1 24 1
+              { srcInfoSpan = SrcSpan "test/assets/WithContext.hs" 1 1 32 1
               , srcInfoPoints =
                   [ SrcSpan "test/assets/WithContext.hs" 1 1 1 1
                   , SrcSpan "test/assets/WithContext.hs" 2 1 2 1
@@ -13,8 +13,10 @@ Module
                   , SrcSpan "test/assets/WithContext.hs" 6 1 6 1
                   , SrcSpan "test/assets/WithContext.hs" 22 1 22 1
                   , SrcSpan "test/assets/WithContext.hs" 23 1 23 1
-                  , SrcSpan "test/assets/WithContext.hs" 24 1 24 1
-                  , SrcSpan "test/assets/WithContext.hs" 24 1 24 1
+                  , SrcSpan "test/assets/WithContext.hs" 30 1 30 1
+                  , SrcSpan "test/assets/WithContext.hs" 31 1 31 1
+                  , SrcSpan "test/assets/WithContext.hs" 32 1 32 1
+                  , SrcSpan "test/assets/WithContext.hs" 32 1 32 1
                   ]
               }
         , imports =
@@ -41,6 +43,11 @@ Module
             (VerifiedExample
                (SrcSpan "test/assets/WithContext.hs" 21 1 21 25)
                [ "Just \"b\" ==> result" ])
+        ]
+      , [ CodeBlockComment
+            (VerifiedExample
+               (SrcSpan "test/assets/WithContext.hs" 29 1 29 37)
+               [ "testNoAccessToResult ==> result" ])
         ]
       ]
   }

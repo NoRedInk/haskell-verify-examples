@@ -21,3 +21,11 @@ import NriPrelude
 -- > Just "b" ==> result
 test :: Maybe [Char]
 test = Just "a"
+
+-- | TypeApplications
+--
+-- Examples:
+--
+-- > testNoAccessToResult ==> result
+testNoAccessToResult :: Maybe [Char]
+testNoAccessToResult = Just "a"
