@@ -4,19 +4,21 @@ Module
         { moduleName = Just "WithContext"
         , moduleSource =
             SrcSpanInfo
-              { srcInfoSpan = SrcSpan "test/assets/WithContext.hs" 1 1 32 1
+              { srcInfoSpan = SrcSpan "test/assets/WithContext.hs" 1 1 51 1
               , srcInfoPoints =
                   [ SrcSpan "test/assets/WithContext.hs" 1 1 1 1
                   , SrcSpan "test/assets/WithContext.hs" 2 1 2 1
                   , SrcSpan "test/assets/WithContext.hs" 4 1 4 1
                   , SrcSpan "test/assets/WithContext.hs" 4 1 4 1
                   , SrcSpan "test/assets/WithContext.hs" 6 1 6 1
-                  , SrcSpan "test/assets/WithContext.hs" 22 1 22 1
-                  , SrcSpan "test/assets/WithContext.hs" 23 1 23 1
-                  , SrcSpan "test/assets/WithContext.hs" 30 1 30 1
-                  , SrcSpan "test/assets/WithContext.hs" 31 1 31 1
+                  , SrcSpan "test/assets/WithContext.hs" 24 1 24 1
+                  , SrcSpan "test/assets/WithContext.hs" 25 1 25 1
                   , SrcSpan "test/assets/WithContext.hs" 32 1 32 1
-                  , SrcSpan "test/assets/WithContext.hs" 32 1 32 1
+                  , SrcSpan "test/assets/WithContext.hs" 33 1 33 1
+                  , SrcSpan "test/assets/WithContext.hs" 49 1 49 1
+                  , SrcSpan "test/assets/WithContext.hs" 50 1 50 1
+                  , SrcSpan "test/assets/WithContext.hs" 51 1 51 1
+                  , SrcSpan "test/assets/WithContext.hs" 51 1 51 1
                   ]
               }
         , imports =
@@ -33,21 +35,37 @@ Module
         }
   , comments =
       [ [ ContextBlockComment
-            (SrcSpan "test/assets/WithContext.hs" 12 1 15 5)
-            [ "result :: Maybe [Char]" , "result = Just \"a\"" ]
+            (SrcSpan "test/assets/WithContext.hs" 12 1 17 5)
+            [ "import Prelude (String)"
+            , ""
+            , "result :: Maybe String"
+            , "result = Just \"a\""
+            ]
         , CodeBlockComment
             (VerifiedExample
-               (SrcSpan "test/assets/WithContext.hs" 19 1 19 46)
+               (SrcSpan "test/assets/WithContext.hs" 21 1 21 46)
                [ "identity @(Maybe [Char]) test ==> result" ])
         , CodeBlockComment
             (VerifiedExample
-               (SrcSpan "test/assets/WithContext.hs" 21 1 21 25)
+               (SrcSpan "test/assets/WithContext.hs" 23 1 23 25)
                [ "Just \"b\" ==> result" ])
         ]
       , [ CodeBlockComment
             (VerifiedExample
-               (SrcSpan "test/assets/WithContext.hs" 29 1 29 37)
+               (SrcSpan "test/assets/WithContext.hs" 31 1 31 37)
                [ "testNoAccessToResult ==> result" ])
+        ]
+      , [ ContextBlockComment
+            (SrcSpan "test/assets/WithContext.hs" 39 1 44 5)
+            [ "import qualified Prelude"
+            , ""
+            , "result :: Maybe Prelude.String"
+            , "result = Just \"a\""
+            ]
+        , CodeBlockComment
+            (VerifiedExample
+               (SrcSpan "test/assets/WithContext.hs" 48 1 48 22)
+               [ "test3 ==> result" ])
         ]
       ]
   }
