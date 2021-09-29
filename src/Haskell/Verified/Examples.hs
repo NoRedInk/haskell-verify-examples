@@ -5,12 +5,10 @@ module Haskell.Verified.Examples
     tryLoadImplicitCradle,
     parse,
     Module (..),
-    ModuleInfo (..),
-    Example (..),
-    examples,
-    exampleFromText,
+    ModuleInfo,
+    Example,
     verify,
-    ExampleResult (..),
+    ExampleResult,
     Reporter (..),
     report,
   )
@@ -514,10 +512,6 @@ getDefaultLanguageExtensions = List.filterMap <| trimPrefix "-X"
 
 getPackageDbs :: List Prelude.String -> List Prelude.String
 getPackageDbs options = List.concat [[l, r] | (l, r) <- Prelude.zip options (List.drop 1 options), l == "-package-db"]
-
-exampleFromText :: Prelude.String -> Result Error Example
-exampleFromText val =
-  toExample emptySrcSpan (Prelude.lines val)
 
 taskFromResult :: Result err a -> Task err a
 taskFromResult (Err err) = Task.fail err
