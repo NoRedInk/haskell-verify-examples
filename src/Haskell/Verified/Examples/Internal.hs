@@ -39,7 +39,7 @@ instance Exception.Exception EvalError
 
 data Module = Module
   { moduleInfo :: ModuleInfo,
-    comments :: List Comment
+    comments :: List (List Comment)
   }
   deriving (Show)
 

@@ -107,8 +107,8 @@ handler = do
 
 verify :: Handler -> CradleInfo -> Module -> Task Error (List (Example, ExampleResult))
 verify handler cradleInfo Module {comments, moduleInfo} =
-  withContext handler moduleInfo comments <| \maybeContext ->
-    comments
+  withContext handler moduleInfo comments <| \maybeContext comments' ->
+    comments'
       |> examples
       |> List.map
         ( \example ->
@@ -291,20 +291,26 @@ data Context = Context
     contextModuleName :: Text
   }
 
-withContext :: Handler -> ModuleInfo -> List Comment -> (Maybe Context -> Task Error a) -> Task Error a
-withContext handler moduleInfo comments go = do
-  let contextModuleName = "HaskellVerifiedExamplesContext"
-  case contextBlocks comments of
-    [] -> go Nothing
-    xs -> do
-      contextModulePath <-
-        [ ["module " ++ Text.toList contextModuleName ++ " where"],
-          List.map renderImport (imports moduleInfo),
-          xs
-          ]
-          |> List.concat
-          |> writeTempFile handler
-      go (Just Context {contextModulePath, contextModuleName})
+withContext :: Handler -> ModuleInfo -> List (List Comment) -> (Maybe Context -> List Comment -> Task Error (List a)) -> Task Error (List a)
+withContext handler moduleInfo comments go =
+  comments
+    |> List.indexedMap
+      ( \index comments' -> do
+          let contextModuleName = "HaskellVerifiedExamplesContext" ++ Text.fromInt index
+          case contextBlocks comments' of
+            [] -> go Nothing comments'
+            xs -> do
+              contextModulePath <-
+                [ ["module " ++ Text.toList contextModuleName ++ " where"],
+                  List.map renderImport (imports moduleInfo),
+                  xs
+                  ]
+                  |> List.concat
+                  |> writeTempFile handler
+              go (Just Context {contextModulePath, contextModuleName}) comments'
+      )
+    |> Task.parallel
+    |> Task.map List.concat
 
 renderImport :: Hint.ModuleImport -> Prelude.String
 renderImport m =
@@ -333,9 +339,15 @@ toModule parsed =
             (Just (LHE.Syntax.ModuleHead _ (LHE.Syntax.ModuleName _ name) _ _)) -> Just (Text.fromList name)
             Nothing -> Nothing
       let moduleLanguageExtensions = getLanguageExtensions pragmas
-      comments <- case toComments cs of
-        Ok ok -> Task.succeed ok
-        Err err -> Task.fail err
+      comments <-
+        cs
+          |> List.foldl groupBlocks ([], [])
+          |> ( \(last, rest) ->
+                 (last : rest)
+                   |> Prelude.traverse (List.reverse >> toComments)
+                   |> Result.map List.reverse
+             )
+          |> taskFromResult
       Task.succeed
         Module
           { moduleInfo =
@@ -362,6 +374,19 @@ getLanguageExtensions =
             ns
         _ -> []
     )
+
+groupBlocks ::
+  LHE.Comments.Comment ->
+  (List LHE.Comments.Comment, List (List LHE.Comments.Comment)) ->
+  (List LHE.Comments.Comment, List (List LHE.Comments.Comment))
+groupBlocks next (prev, rest) =
+  case (next, prev) of
+    (LHE.Comments.Comment _ nextSrcSpan _, LHE.Comments.Comment _ prevSrcSpan _ : prevRest) ->
+      if LHE.SrcLoc.srcSpanEndLine prevSrcSpan + 1 == LHE.SrcLoc.srcSpanStartLine nextSrcSpan
+        then (next : prev, rest)
+        else ([next], prev : rest)
+    (_, []) ->
+      ([next], rest)
 
 toComments :: List LHE.Comments.Comment -> Result Error (List Comment)
 toComments cs =
@@ -494,3 +519,7 @@ getPackageDbs options = List.concat [[l, r] | (l, r) <- Prelude.zip options (Lis
 exampleFromText :: Prelude.String -> Result Error Example
 exampleFromText val =
   toExample emptySrcSpan (Prelude.lines val)
+
+taskFromResult :: Result err a -> Task err a
+taskFromResult (Err err) = Task.fail err
+taskFromResult (Ok a) = Task.succeed a

@@ -30,16 +30,17 @@ Module
             ]
         }
   , comments =
-      [ ContextBlockComment
-          (SrcSpan "test/assets/WithContext.hs" 12 1 15 5)
-          [ "result :: Maybe [Char]" , "result = Just \"a\"" ]
-      , CodeBlockComment
-          (VerifiedExample
-             (SrcSpan "test/assets/WithContext.hs" 19 1 19 46)
-             [ "identity @(Maybe [Char]) test ==> result" ])
-      , CodeBlockComment
-          (VerifiedExample
-             (SrcSpan "test/assets/WithContext.hs" 21 1 21 25)
-             [ "Just \"b\" ==> result" ])
+      [ [ ContextBlockComment
+            (SrcSpan "test/assets/WithContext.hs" 12 1 15 5)
+            [ "result :: Maybe [Char]" , "result = Just \"a\"" ]
+        , CodeBlockComment
+            (VerifiedExample
+               (SrcSpan "test/assets/WithContext.hs" 19 1 19 46)
+               [ "identity @(Maybe [Char]) test ==> result" ])
+        , CodeBlockComment
+            (VerifiedExample
+               (SrcSpan "test/assets/WithContext.hs" 21 1 21 25)
+               [ "Just \"b\" ==> result" ])
+        ]
       ]
   }
