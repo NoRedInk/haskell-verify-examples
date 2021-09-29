@@ -1,4 +1,4 @@
-# Revision history for haskell-verified-examples
+# Revision history for haskell-verify-examples
 
 ## 0.1.0.0 -- YYYY-mm-dd
 

@@ -2,7 +2,7 @@ module Main where
 
 import qualified Control.Monad
 import qualified Data.Foldable
-import qualified Haskell.Verified.Examples as HVE
+import qualified Haskell.Verify.Examples as HVE
 import NriPrelude
 import qualified System.Directory
 import qualified System.Environment

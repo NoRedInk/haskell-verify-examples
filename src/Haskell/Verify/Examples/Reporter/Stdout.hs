@@ -1,11 +1,11 @@
 -- | Module for presenting example results on the console.
-module Haskell.Verified.Examples.Reporter.Stdout (report) where
+module Haskell.Verify.Examples.Reporter.Stdout (report) where
 
 import qualified Control.Exception as Exception
 import qualified Data.ByteString as BS
 import qualified Data.Text.Encoding as TE
-import Haskell.Verified.Examples.Internal
-import Haskell.Verified.Examples.Verified (Verified (..))
+import Haskell.Verify.Examples.Internal
+import Haskell.Verify.Examples.Verified (Verified (..))
 import qualified Language.Haskell.Exts.SrcLoc as LHE.SrcLoc
 import qualified Language.Haskell.Interpreter as Hint
 import qualified List

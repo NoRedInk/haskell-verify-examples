@@ -1,4 +1,4 @@
-module Haskell.Verified.Examples.Internal where
+module Haskell.Verify.Examples.Internal where
 
 import qualified Control.Concurrent.Async as Async
 import qualified Control.Exception.Safe as Exception
@@ -7,7 +7,7 @@ import qualified HIE.Bios.Cradle
 import qualified HIE.Bios.Environment
 import qualified HIE.Bios.Flags
 import qualified HIE.Bios.Types
-import Haskell.Verified.Examples.Verified (Verified (..))
+import Haskell.Verify.Examples.Verified (Verified (..))
 import qualified Language.Haskell.Exts as LHE
 import qualified Language.Haskell.Exts.Comments as LHE.Comments
 import qualified Language.Haskell.Exts.Lexer as LHE.Lexer
@@ -17,7 +17,7 @@ import qualified Language.Haskell.Exts.Syntax as LHE.Syntax
 import qualified Language.Haskell.Interpreter as Hint
 import qualified Language.Haskell.Interpreter.Unsafe as Hint.Unsafe
 import NriPrelude
-import qualified Paths_haskell_verified_examples as DataPath
+import qualified Paths_haskell_verify_examples as DataPath
 import qualified System.IO
 import qualified Text.Read
 import qualified Prelude

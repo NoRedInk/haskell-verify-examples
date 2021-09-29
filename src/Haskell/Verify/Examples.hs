@@ -1,4 +1,4 @@
-module Haskell.Verified.Examples
+module Haskell.Verify.Examples
   ( Handler,
     handler,
     CradleInfo (..),
@@ -23,9 +23,9 @@ import qualified HIE.Bios.Cradle
 import qualified HIE.Bios.Environment
 import qualified HIE.Bios.Flags
 import qualified HIE.Bios.Types
-import Haskell.Verified.Examples.Internal
-import qualified Haskell.Verified.Examples.Reporter.Stdout as Reporter.Stdout
-import Haskell.Verified.Examples.Verified (Verified (..))
+import Haskell.Verify.Examples.Internal
+import qualified Haskell.Verify.Examples.Reporter.Stdout as Reporter.Stdout
+import Haskell.Verify.Examples.Verified (Verified (..))
 import qualified Language.Haskell.Exts as LHE
 import qualified Language.Haskell.Exts.Comments as LHE.Comments
 import qualified Language.Haskell.Exts.Lexer as LHE.Lexer
@@ -36,7 +36,7 @@ import qualified Language.Haskell.Interpreter as Hint
 import qualified Language.Haskell.Interpreter.Unsafe as Hint.Unsafe
 import qualified Language.Preprocessor.Cpphs as Cpphs
 import NriPrelude
-import qualified Paths_haskell_verified_examples as DataPath
+import qualified Paths_haskell_verify_examples as DataPath
 import qualified Platform
 import qualified System.IO
 import qualified Text.Read
@@ -133,8 +133,8 @@ preloadPaths :: Prelude.IO (List Prelude.FilePath)
 preloadPaths =
   Prelude.traverse
     DataPath.getDataFileName
-    [ "src/Haskell/Verified/Examples/RunTime.hs",
-      "src/Haskell/Verified/Examples/Verified.hs"
+    [ "src/Haskell/Verify/Examples/RunTime.hs",
+      "src/Haskell/Verify/Examples/Verified.hs"
     ]
 
 makeImport :: LHE.Syntax.ImportDecl LHE.SrcLoc.SrcSpanInfo -> Hint.ModuleImport
@@ -221,8 +221,8 @@ evalIO CradleInfo {packageDbs, languageExtensions, importPaths} moduleInfo maybe
         Nothing -> Prelude.return ()
 
       let exampleImports =
-            [ Just "Haskell.Verified.Examples.RunTime",
-              Just "Haskell.Verified.Examples.Verified",
+            [ Just "Haskell.Verify.Examples.RunTime",
+              Just "Haskell.Verify.Examples.Verified",
               Maybe.map contextModuleName maybeContext
             ]
               |> List.filterMap identity
