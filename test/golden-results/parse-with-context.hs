@@ -34,38 +34,47 @@ Module
             ]
         }
   , comments =
-      [ [ ContextBlock
-            (SrcSpan "test/assets/WithContext.hs" 12 1 17 5)
-            [ "import Prelude (String)"
-            , ""
-            , "result :: Maybe String"
-            , "result = Just \"a\""
-            ]
-        , ExampleBlock
-            (VerifiedExample
-               (SrcSpan "test/assets/WithContext.hs" 21 1 21 46)
-               [ "identity @(Maybe [Char]) test ==> result" ])
-        , ExampleBlock
-            (VerifiedExample
-               (SrcSpan "test/assets/WithContext.hs" 23 1 23 25)
-               [ "Just \"b\" ==> result" ])
-        ]
-      , [ ExampleBlock
-            (VerifiedExample
-               (SrcSpan "test/assets/WithContext.hs" 31 1 31 37)
-               [ "testNoAccessToResult ==> result" ])
-        ]
-      , [ ContextBlock
-            (SrcSpan "test/assets/WithContext.hs" 39 1 44 5)
-            [ "import qualified Prelude"
-            , ""
-            , "result :: Maybe Prelude.String"
-            , "result = Just \"a\""
-            ]
-        , ExampleBlock
-            (VerifiedExample
-               (SrcSpan "test/assets/WithContext.hs" 48 1 48 22)
-               [ "test3 ==> result" ])
-        ]
+      [ Comment
+          { codeBlocks =
+              [ ContextBlock
+                  (SrcSpan "test/assets/WithContext.hs" 12 1 17 5)
+                  [ "import Prelude (String)"
+                  , ""
+                  , "result :: Maybe String"
+                  , "result = Just \"a\""
+                  ]
+              , ExampleBlock
+                  (VerifiedExample
+                     (SrcSpan "test/assets/WithContext.hs" 21 1 21 46)
+                     [ "identity @(Maybe [Char]) test ==> result" ])
+              , ExampleBlock
+                  (VerifiedExample
+                     (SrcSpan "test/assets/WithContext.hs" 23 1 23 25)
+                     [ "Just \"b\" ==> result" ])
+              ]
+          }
+      , Comment
+          { codeBlocks =
+              [ ExampleBlock
+                  (VerifiedExample
+                     (SrcSpan "test/assets/WithContext.hs" 31 1 31 37)
+                     [ "testNoAccessToResult ==> result" ])
+              ]
+          }
+      , Comment
+          { codeBlocks =
+              [ ContextBlock
+                  (SrcSpan "test/assets/WithContext.hs" 39 1 44 5)
+                  [ "import qualified Prelude"
+                  , ""
+                  , "result :: Maybe Prelude.String"
+                  , "result = Just \"a\""
+                  ]
+              , ExampleBlock
+                  (VerifiedExample
+                     (SrcSpan "test/assets/WithContext.hs" 48 1 48 22)
+                     [ "test3 ==> result" ])
+              ]
+          }
       ]
   }

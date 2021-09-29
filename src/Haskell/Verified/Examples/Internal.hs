@@ -43,7 +43,7 @@ data Module = Module
   }
   deriving (Show)
 
-type Comment = List CodeBlock
+newtype Comment = Comment {codeBlocks :: List CodeBlock} deriving (Show)
 
 data ModuleInfo = ModuleInfo
   { moduleName :: Maybe Text, -- Headless modules might not have a name

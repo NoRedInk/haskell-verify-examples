@@ -266,29 +266,31 @@ tryLoadImplicitCradle handler path =
           packageDbs = List.map PackageDb (getPackageDbs opts)
         }
 
-examples :: List CodeBlock -> List Example
-examples =
-  List.filterMap
-    ( \case
-        ContextBlock _ _ -> Nothing
-        ExampleBlock example -> Just example
-    )
+examples :: Comment -> List Example
+examples comment =
+  codeBlocks comment
+    |> List.filterMap
+      ( \case
+          ContextBlock _ _ -> Nothing
+          ExampleBlock example -> Just example
+      )
 
-contextBlocks :: List CodeBlock -> List Prelude.String
-contextBlocks =
-  List.concatMap
-    ( \c ->
-        case c of
-          ContextBlock _ context -> context
-          ExampleBlock _ -> []
-    )
+contextBlocks :: Comment -> List Prelude.String
+contextBlocks comment =
+  codeBlocks comment
+    |> List.concatMap
+      ( \c ->
+          case c of
+            ContextBlock _ context -> context
+            ExampleBlock _ -> []
+      )
 
 data Context = Context
   { contextModulePath :: Prelude.FilePath,
     contextModuleName :: Text
   }
 
-withContext :: Handler -> ModuleInfo -> List Comment -> (Maybe Context -> List CodeBlock -> Task Error (List a)) -> Task Error (List a)
+withContext :: Handler -> ModuleInfo -> List Comment -> (Maybe Context -> Comment -> Task Error (List a)) -> Task Error (List a)
 withContext handler moduleInfo comments go =
   comments
     |> List.indexedMap
@@ -341,7 +343,7 @@ toModule parsed =
           |> List.foldl groupBlocks ([], [])
           |> ( \(last, rest) ->
                  (last : rest)
-                   |> Prelude.traverse (List.reverse >> toComments)
+                   |> Prelude.traverse (List.reverse >> toComment)
                    |> Result.map List.reverse
              )
           |> taskFromResult
@@ -385,8 +387,8 @@ groupBlocks next (prev, rest) =
     (_, []) ->
       ([next], rest)
 
-toComments :: List LHE.Comments.Comment -> Result Error Comment
-toComments cs =
+toComment :: List LHE.Comments.Comment -> Result Error Comment
+toComment cs =
   cs
     |> mergeComments [] False
     |> List.filterMap
@@ -410,6 +412,7 @@ toComments cs =
                 |> Just
       )
     |> combineResults
+    |> Result.map Comment
 
 data CommentType = CodeBlockType | PlainTextType | ContextBlockType
   deriving (Show, Eq)
