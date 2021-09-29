@@ -27,20 +27,20 @@ Module
             [ LanguageExtension { unLanguageExtension = "NoImplicitPrelude" } ]
         }
   , comments =
-      [ [ CodeBlockComment
+      [ [ ExampleBlock
             (VerifiedExample
                (SrcSpan "test/assets/UnverifiedExamples.hs" 9 1 10 11)
                [ "test" , "==> 1" ])
-        , CodeBlockComment
+        , ExampleBlock
             (UnverifiedExample
                (SrcSpan "test/assets/UnverifiedExamples.hs" 12 1 12 10)
                [ "test" ])
-        , CodeBlockComment
+        , ExampleBlock
             (VerifiedExample
                (SrcSpan "test/assets/UnverifiedExamples.hs" 14 1 15 11)
                [ "test + test" , "==> 3" ])
         ]
-      , [ CodeBlockComment
+      , [ ExampleBlock
             (VerifiedExample
                (SrcSpan "test/assets/UnverifiedExamples.hs" 20 1 25 21)
                [ "[ 1"
@@ -51,7 +51,7 @@ Module
                , "==> [ 2, 4, 5 ]"
                ])
         ]
-      , [ CodeBlockComment
+      , [ ExampleBlock
             (VerifiedExample
                (SrcSpan "test/assets/UnverifiedExamples.hs" 29 1 34 14)
                [ "[ 1" , ", 2" , ", 3" , ", 4" , "] |> map (+ 1)" , "==> True" ])

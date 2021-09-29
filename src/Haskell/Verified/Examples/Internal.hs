@@ -39,9 +39,11 @@ instance Exception.Exception EvalError
 
 data Module = Module
   { moduleInfo :: ModuleInfo,
-    comments :: List (List Comment)
+    comments :: List Comment
   }
   deriving (Show)
+
+type Comment = List CodeBlock
 
 data ModuleInfo = ModuleInfo
   { moduleName :: Maybe Text, -- Headless modules might not have a name
@@ -72,9 +74,9 @@ newtype PackageDb = PackageDb
   {unPackageDb :: Prelude.String}
   deriving (Show)
 
-data Comment
-  = CodeBlockComment Example
-  | ContextBlockComment LHE.SrcLoc.SrcSpan (List Prelude.String)
+data CodeBlock
+  = ExampleBlock Example
+  | ContextBlock LHE.SrcLoc.SrcSpan (List Prelude.String)
   deriving (Show, Eq)
 
 data Example

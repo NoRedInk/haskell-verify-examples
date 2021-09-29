@@ -27,18 +27,18 @@ Module
             [ LanguageExtension { unLanguageExtension = "NoImplicitPrelude" } ]
         }
   , comments =
-      [ [ CodeBlockComment
+      [ [ ExampleBlock
             (VerifiedExample
                (SrcSpan "test/assets/Simple.hs" 9 1 10 11) [ "test" , "==> 1" ])
-        , CodeBlockComment
+        , ExampleBlock
             (VerifiedExample
                (SrcSpan "test/assets/Simple.hs" 12 1 13 11)
                [ "test + test" , "==> 2" ])
-        , CodeBlockComment
+        , ExampleBlock
             (UnverifiedExample
                (SrcSpan "test/assets/Simple.hs" 15 1 15 17) [ "test + test" ])
         ]
-      , [ CodeBlockComment
+      , [ ExampleBlock
             (VerifiedExample
                (SrcSpan "test/assets/Simple.hs" 18 1 18 25)
                [ "test2 + test2 ==> 4" ])

@@ -6,7 +6,6 @@ module Haskell.Verified.Examples
     parse,
     Module (..),
     ModuleInfo (..),
-    Comment (..),
     Example (..),
     examples,
     exampleFromText,
@@ -269,21 +268,21 @@ tryLoadImplicitCradle handler path =
           packageDbs = List.map PackageDb (getPackageDbs opts)
         }
 
-examples :: List Comment -> List Example
+examples :: List CodeBlock -> List Example
 examples =
   List.filterMap
     ( \case
-        ContextBlockComment _ _ -> Nothing
-        CodeBlockComment example -> Just example
+        ContextBlock _ _ -> Nothing
+        ExampleBlock example -> Just example
     )
 
-contextBlocks :: List Comment -> List Prelude.String
+contextBlocks :: List CodeBlock -> List Prelude.String
 contextBlocks =
   List.concatMap
     ( \c ->
         case c of
-          ContextBlockComment _ context -> context
-          CodeBlockComment _ -> []
+          ContextBlock _ context -> context
+          ExampleBlock _ -> []
     )
 
 data Context = Context
@@ -291,7 +290,7 @@ data Context = Context
     contextModuleName :: Text
   }
 
-withContext :: Handler -> ModuleInfo -> List (List Comment) -> (Maybe Context -> List Comment -> Task Error (List a)) -> Task Error (List a)
+withContext :: Handler -> ModuleInfo -> List Comment -> (Maybe Context -> List CodeBlock -> Task Error (List a)) -> Task Error (List a)
 withContext handler moduleInfo comments go =
   comments
     |> List.indexedMap
@@ -388,33 +387,33 @@ groupBlocks next (prev, rest) =
     (_, []) ->
       ([next], rest)
 
-toComments :: List LHE.Comments.Comment -> Result Error (List Comment)
+toComments :: List LHE.Comments.Comment -> Result Error Comment
 toComments cs =
   cs
     |> mergeComments [] False
     |> List.filterMap
       ( \(ct, comments) ->
           case ct of
-            PlainText -> Nothing
-            CodeBlock ->
+            PlainTextType -> Nothing
+            CodeBlockType ->
               comments
                 |> List.map (commentValue >> Prelude.dropWhile (/= '>') >> Prelude.drop 2)
                 |> toExample (commentsSrcSpan comments)
-                |> Result.map CodeBlockComment
+                |> Result.map ExampleBlock
                 |> Just
-            ContextBlock ->
+            ContextBlockType ->
               comments
                 |> List.map commentValue
                 |> Data.List.tail
                 |> Data.List.init
                 |> List.map (Prelude.drop 1)
-                |> ContextBlockComment (commentsSrcSpan comments)
+                |> ContextBlock (commentsSrcSpan comments)
                 |> Ok
                 |> Just
       )
     |> combineResults
 
-data CommentType = CodeBlock | PlainText | ContextBlock
+data CommentType = CodeBlockType | PlainTextType | ContextBlockType
   deriving (Show, Eq)
 
 mergeComments ::
@@ -425,7 +424,7 @@ mergeComments ::
 mergeComments acc _ [] = List.reverse acc
 mergeComments acc isInContext (next : restNext) =
   let nextCt = commentType next
-      stillInContext = if isInContext then nextCt /= ContextBlock else nextCt == ContextBlock
+      stillInContext = if isInContext then nextCt /= ContextBlockType else nextCt == ContextBlockType
       newAcc = case acc of
         [] -> [(nextCt, [next])]
         (prevCt, prev) : restPrev ->
@@ -437,11 +436,11 @@ mergeComments acc isInContext (next : restNext) =
 commentType :: LHE.Comments.Comment -> CommentType
 commentType (LHE.Comments.Comment _ _ text) =
   if hasArrow text
-    then CodeBlock
+    then CodeBlockType
     else
       if hasAt text
-        then ContextBlock
-        else PlainText
+        then ContextBlockType
+        else PlainTextType
 
 hasAt text = Text.trim (Text.fromList text) == "@"
 
