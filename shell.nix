@@ -7,5 +7,6 @@ in pkgs.haskellPackages.shellFor {
     pkgs.haskellPackages.ghcid
     pkgs.haskellPackages.hpack
     pkgs.ormolu
+    pkgs.overmind
   ];
 }
