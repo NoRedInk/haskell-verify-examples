@@ -119,3 +119,20 @@ shimModuleWithImports imports =
 
 makeSimpleImport :: Text -> Hint.ModuleImport
 makeSimpleImport name = Hint.ModuleImport (Text.toList name) Hint.NotQualified Hint.NoImportList
+
+groupWhile :: (a -> a -> Bool) -> List a -> List (List a)
+groupWhile isSameGroup items =
+  List.foldr
+    ( \x acc ->
+        case acc of
+          [] ->
+            [(x, [])]
+          (y, restOfGroup) : groups ->
+            if isSameGroup x y
+              then (x, y : restOfGroup) : groups
+              else (x, []) : acc
+    )
+    []
+    items
+    |> List.map (\(head, tail) -> head : tail)
+    |> List.reverse

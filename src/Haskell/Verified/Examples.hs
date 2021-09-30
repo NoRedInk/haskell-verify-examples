@@ -340,12 +340,9 @@ toModule parsed =
       let moduleLanguageExtensions = getLanguageExtensions pragmas
       comments <-
         cs
-          |> List.foldl groupBlocks ([], [])
-          |> ( \(last, rest) ->
-                 (last : rest)
-                   |> Prelude.traverse (List.reverse >> toComment)
-                   |> Result.map List.reverse
-             )
+          |> groupBlocks
+          |> Prelude.traverse toComment
+          |> Result.map List.reverse
           |> taskFromResult
       Task.succeed
         Module
@@ -374,18 +371,13 @@ getLanguageExtensions =
         _ -> []
     )
 
-groupBlocks ::
-  LHE.Comments.Comment ->
-  (List LHE.Comments.Comment, List (List LHE.Comments.Comment)) ->
-  (List LHE.Comments.Comment, List (List LHE.Comments.Comment))
-groupBlocks next (prev, rest) =
-  case (next, prev) of
-    (LHE.Comments.Comment _ nextSrcSpan _, LHE.Comments.Comment _ prevSrcSpan _ : prevRest) ->
-      if LHE.SrcLoc.srcSpanEndLine prevSrcSpan + 1 == LHE.SrcLoc.srcSpanStartLine nextSrcSpan
-        then (next : prev, rest)
-        else ([next], prev : rest)
-    (_, []) ->
-      ([next], rest)
+groupBlocks :: List LHE.Comments.Comment -> List (List LHE.Comments.Comment)
+groupBlocks =
+  groupWhile
+    <| \(LHE.Comments.Comment _ leftSpan _)
+        (LHE.Comments.Comment _ rightSpan _) ->
+        LHE.SrcLoc.srcSpanEndLine leftSpan + 1
+          == LHE.SrcLoc.srcSpanStartLine rightSpan
 
 toComment :: List LHE.Comments.Comment -> Result Error Comment
 toComment cs =
