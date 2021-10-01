@@ -12,7 +12,7 @@ test/assets/UnverifiedExamples.hs:12
 [m[2m  15: -- > ==> 3
 [m[2m  16: test = 1
 [m[2m  17: 
-[mNo expected result for example.
+[mTODO: No expected result for example.
 
 
 test/assets/UnverifiedExamples.hs:14

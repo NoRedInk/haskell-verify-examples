@@ -5,6 +5,6 @@ import qualified Prelude
 data Verified
   = Verified
   | Unverified Prelude.String Prelude.String
-  | NoExampleResult
+  | Todo
   | HelpTodo Prelude.String
   deriving (Prelude.Show)

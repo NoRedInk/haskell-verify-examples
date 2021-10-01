@@ -98,7 +98,7 @@ examplesSummary =
             summary {verified = example : verified summary}
           ExampleVerifySuccess (Unverified _ _) ->
             summary {unverified = example : unverified summary}
-          ExampleVerifySuccess NoExampleResult ->
+          ExampleVerifySuccess Todo ->
             summary {noExamples = example : noExamples summary}
           ExampleVerifySuccess (HelpTodo _) ->
             summary {noExamples = example : noExamples summary}
@@ -182,8 +182,8 @@ renderExample terminalWidth (example, ExampleVerifySuccess verified) =
                 expectedText
                 actualText
           ]
-    NoExampleResult ->
-      ["No expected result for example."]
+    Todo ->
+      ["TODO: No expected result for example."]
     HelpTodo actual ->
       [ chunk "This example evaluates to the following value",
         chunk "\n",

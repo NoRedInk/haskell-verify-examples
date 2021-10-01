@@ -127,7 +127,7 @@ verifyExample Handler {eval} cradleInfo moduleInfo maybeContext example =
     VerifiedExample _ code ->
       eval cradleInfo moduleInfo maybeContext (Prelude.unlines code)
     UnverifiedExample _ code ->
-      Task.succeed NoExampleResult
+      Task.succeed Todo
 
 preloadPaths :: Prelude.IO (List Prelude.FilePath)
 preloadPaths =
