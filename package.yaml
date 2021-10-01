@@ -1,19 +1,19 @@
-name: haskell-verified-examples
+name: haskell-verify-examples
 synopsis: Verify examples in your docs.
-description: Please see the README at <https://github.com/NoRedInk/haskell-verified-examples/tree/trunk/#readme>.
+description: Please see the README at <https://github.com/NoRedInk/haskell-verify-examples/tree/trunk/#readme>.
 author: NoRedInk
 version: 0.0.0.1
 maintainer: haskell-open-source@noredink.com
 copyright: 2021 NoRedInk Corp.
-github: NoRedInk/haskell-verified-examples
+github: NoRedInk/haskell-verify-examples
 license-file: LICENSE
 category: Web
 extra-source-files:
   - README.md
   - LICENSE
 data-files:
-  - src/Haskell/Verified/Examples/RunTime.hs
-  - src/Haskell/Verified/Examples/Verified.hs
+  - src/Haskell/Verify/Examples/RunTime.hs
+  - src/Haskell/Verify/Examples/Verified.hs
 executables:
   haskell-verify-examples:
     dependencies:
@@ -21,7 +21,7 @@ executables:
       - directory >= 1.3.6.0 && < 1.4
       - filemanip >= 0.3.6.3 && < 0.3.7
       - haskell-src-exts >= 1.23.1 && < 1.24
-      - haskell-verified-examples
+      - haskell-verify-examples
       - hint >= 0.9.0.4 && < 0.10
       - nri-prelude >= 0.1.0.0 && < 0.7
       - text >= 1.2.3.1 && < 1.3
@@ -46,9 +46,9 @@ library:
   - terminal-size >= 0.3.2.1 && < 0.4
   - text >= 1.2.3.1 && < 1.3
   exposed-modules:
-  - Haskell.Verified.Examples
-  - Haskell.Verified.Examples.RunTime
-  - Haskell.Verified.Examples.Verified
+  - Haskell.Verify.Examples
+  - Haskell.Verify.Examples.RunTime
+  - Haskell.Verify.Examples.Verified
   source-dirs: src
 tests:
   spec:

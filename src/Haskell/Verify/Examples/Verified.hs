@@ -1,4 +1,4 @@
-module Haskell.Verified.Examples.Verified (Verified (..)) where
+module Haskell.Verify.Examples.Verified (Verified (..)) where
 
 import qualified Prelude
 

@@ -3,9 +3,9 @@ module Main (main) where
 import qualified Control.Concurrent.Async as Async
 import qualified Data.Text.IO
 import qualified Expect
-import qualified Haskell.Verified.Examples as HVE
-import qualified Haskell.Verified.Examples.Internal as Internal
-import qualified Haskell.Verified.Examples.Reporter.Stdout as Reporter.Stdout
+import qualified Haskell.Verify.Examples as HVE
+import qualified Haskell.Verify.Examples.Internal as Internal
+import qualified Haskell.Verify.Examples.Reporter.Stdout as Reporter.Stdout
 import qualified Language.Haskell.Exts.SrcLoc as LHE.SrcLoc
 import qualified System.Directory as Directory
 import qualified System.FilePath as FilePath
@@ -22,7 +22,7 @@ main = do
 tests :: List Prelude.FilePath -> Test
 tests assets =
   describe
-    "Haskell.Verified.Examples"
+    "Haskell.Verify.Examples"
     [ describe
         "parse"
         [ test "returns all comments" <| \() -> do

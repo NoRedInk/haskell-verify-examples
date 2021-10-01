@@ -1,6 +1,6 @@
-module Haskell.Verified.Examples.RunTime ((==>)) where
+module Haskell.Verify.Examples.RunTime ((==>)) where
 
-import Haskell.Verified.Examples.Verified (Verified (..))
+import Haskell.Verify.Examples.Verified (Verified (..))
 import qualified Prelude
 
 infixl 0 ==>
