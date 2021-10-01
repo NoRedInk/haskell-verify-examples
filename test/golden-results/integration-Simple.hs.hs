@@ -9,10 +9,13 @@ test/assets/Simple.hs:15
 [m✗ 15: -- > test + test
 [2m  16: test = 1
 [m[2m  17: 
+[m[2m  18: -- > test2 + test2 ==> 4
+[m[2m  19: test2 = 2
+[m[2m  20: 
 [mNo expected result for example.
 
 [4mNot all examples verified![m
-Verified: 2
+Verified: 3
 Unverified: 0
 No examples: 1
   In these files:

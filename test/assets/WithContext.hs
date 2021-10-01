@@ -5,12 +5,14 @@ module WithContext where
 
 import NriPrelude
 
--- | TypeApplications
+-- |
 --
 -- Setup for examples below:
 --
 -- @
--- result :: Maybe [Char]
+-- import Prelude (String)
+--
+-- result :: Maybe String
 -- result = Just "a"
 -- @
 --
@@ -21,3 +23,28 @@ import NriPrelude
 -- > Just "b" ==> result
 test :: Maybe [Char]
 test = Just "a"
+
+-- |
+--
+-- Examples:
+--
+-- > testNoAccessToResult ==> result
+testNoAccessToResult :: Maybe [Char]
+testNoAccessToResult = Just "a"
+
+-- |
+--
+-- Setup for examples below:
+--
+-- @
+-- import qualified Prelude
+--
+-- result :: Maybe Prelude.String
+-- result = Just "a"
+-- @
+--
+-- Examples:
+--
+-- > test3 ==> result
+test3 :: Maybe [Char]
+test3 = Just "a"

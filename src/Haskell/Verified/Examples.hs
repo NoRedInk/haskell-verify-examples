@@ -5,13 +5,10 @@ module Haskell.Verified.Examples
     tryLoadImplicitCradle,
     parse,
     Module (..),
-    ModuleInfo (..),
-    Comment (..),
-    Example (..),
-    examples,
-    exampleFromText,
+    ModuleInfo,
+    Example,
     verify,
-    ExampleResult (..),
+    ExampleResult,
     Reporter (..),
     report,
   )
@@ -107,8 +104,8 @@ handler = do
 
 verify :: Handler -> CradleInfo -> Module -> Task Error (List (Example, ExampleResult))
 verify handler cradleInfo Module {comments, moduleInfo} =
-  withContext handler moduleInfo comments <| \maybeContext ->
-    comments
+  withContext handler moduleInfo comments <| \maybeContext comments' ->
+    comments'
       |> examples
       |> List.map
         ( \example ->
@@ -269,42 +266,50 @@ tryLoadImplicitCradle handler path =
           packageDbs = List.map PackageDb (getPackageDbs opts)
         }
 
-examples :: List Comment -> List Example
-examples =
-  List.filterMap
-    ( \case
-        ContextBlockComment _ _ -> Nothing
-        CodeBlockComment example -> Just example
-    )
+examples :: Comment -> List Example
+examples comment =
+  codeBlocks comment
+    |> List.filterMap
+      ( \case
+          ContextBlock _ _ -> Nothing
+          ExampleBlock example -> Just example
+      )
 
-contextBlocks :: List Comment -> List Prelude.String
-contextBlocks =
-  List.concatMap
-    ( \c ->
-        case c of
-          ContextBlockComment _ context -> context
-          CodeBlockComment _ -> []
-    )
+contextBlocks :: Comment -> List Prelude.String
+contextBlocks comment =
+  codeBlocks comment
+    |> List.concatMap
+      ( \c ->
+          case c of
+            ContextBlock _ context -> context
+            ExampleBlock _ -> []
+      )
 
 data Context = Context
   { contextModulePath :: Prelude.FilePath,
     contextModuleName :: Text
   }
 
-withContext :: Handler -> ModuleInfo -> List Comment -> (Maybe Context -> Task Error a) -> Task Error a
-withContext handler moduleInfo comments go = do
-  let contextModuleName = "HaskellVerifiedExamplesContext"
-  case contextBlocks comments of
-    [] -> go Nothing
-    xs -> do
-      contextModulePath <-
-        [ ["module " ++ Text.toList contextModuleName ++ " where"],
-          List.map renderImport (imports moduleInfo),
-          xs
-          ]
-          |> List.concat
-          |> writeTempFile handler
-      go (Just Context {contextModulePath, contextModuleName})
+withContext :: Handler -> ModuleInfo -> List Comment -> (Maybe Context -> Comment -> Task Error (List a)) -> Task Error (List a)
+withContext handler moduleInfo comments go =
+  comments
+    |> List.indexedMap
+      ( \index comments' -> do
+          let contextModuleName = "HaskellVerifiedExamplesContext" ++ Text.fromInt index
+          case contextBlocks comments' of
+            [] -> go Nothing comments'
+            xs -> do
+              contextModulePath <-
+                [ ["module " ++ Text.toList contextModuleName ++ " where"],
+                  List.map renderImport (imports moduleInfo),
+                  xs
+                  ]
+                  |> List.concat
+                  |> writeTempFile handler
+              go (Just Context {contextModulePath, contextModuleName}) comments'
+      )
+    |> Task.parallel
+    |> Task.map List.concat
 
 renderImport :: Hint.ModuleImport -> Prelude.String
 renderImport m =
@@ -333,9 +338,12 @@ toModule parsed =
             (Just (LHE.Syntax.ModuleHead _ (LHE.Syntax.ModuleName _ name) _ _)) -> Just (Text.fromList name)
             Nothing -> Nothing
       let moduleLanguageExtensions = getLanguageExtensions pragmas
-      comments <- case toComments cs of
-        Ok ok -> Task.succeed ok
-        Err err -> Task.fail err
+      comments <-
+        cs
+          |> groupBlocks
+          |> Prelude.traverse toComment
+          |> Result.map List.reverse
+          |> taskFromResult
       Task.succeed
         Module
           { moduleInfo =
@@ -363,33 +371,42 @@ getLanguageExtensions =
         _ -> []
     )
 
-toComments :: List LHE.Comments.Comment -> Result Error (List Comment)
-toComments cs =
+groupBlocks :: List LHE.Comments.Comment -> List (List LHE.Comments.Comment)
+groupBlocks =
+  groupWhile
+    <| \(LHE.Comments.Comment _ leftSpan _)
+        (LHE.Comments.Comment _ rightSpan _) ->
+        LHE.SrcLoc.srcSpanEndLine leftSpan + 1
+          == LHE.SrcLoc.srcSpanStartLine rightSpan
+
+toComment :: List LHE.Comments.Comment -> Result Error Comment
+toComment cs =
   cs
     |> mergeComments [] False
     |> List.filterMap
       ( \(ct, comments) ->
           case ct of
-            PlainText -> Nothing
-            CodeBlock ->
+            PlainTextType -> Nothing
+            CodeBlockType ->
               comments
                 |> List.map (commentValue >> Prelude.dropWhile (/= '>') >> Prelude.drop 2)
                 |> toExample (commentsSrcSpan comments)
-                |> Result.map CodeBlockComment
+                |> Result.map ExampleBlock
                 |> Just
-            ContextBlock ->
+            ContextBlockType ->
               comments
                 |> List.map commentValue
                 |> Data.List.tail
                 |> Data.List.init
                 |> List.map (Prelude.drop 1)
-                |> ContextBlockComment (commentsSrcSpan comments)
+                |> ContextBlock (commentsSrcSpan comments)
                 |> Ok
                 |> Just
       )
     |> combineResults
+    |> Result.map Comment
 
-data CommentType = CodeBlock | PlainText | ContextBlock
+data CommentType = CodeBlockType | PlainTextType | ContextBlockType
   deriving (Show, Eq)
 
 mergeComments ::
@@ -400,7 +417,7 @@ mergeComments ::
 mergeComments acc _ [] = List.reverse acc
 mergeComments acc isInContext (next : restNext) =
   let nextCt = commentType next
-      stillInContext = if isInContext then nextCt /= ContextBlock else nextCt == ContextBlock
+      stillInContext = if isInContext then nextCt /= ContextBlockType else nextCt == ContextBlockType
       newAcc = case acc of
         [] -> [(nextCt, [next])]
         (prevCt, prev) : restPrev ->
@@ -412,11 +429,11 @@ mergeComments acc isInContext (next : restNext) =
 commentType :: LHE.Comments.Comment -> CommentType
 commentType (LHE.Comments.Comment _ _ text) =
   if hasArrow text
-    then CodeBlock
+    then CodeBlockType
     else
       if hasAt text
-        then ContextBlock
-        else PlainText
+        then ContextBlockType
+        else PlainTextType
 
 hasAt text = Text.trim (Text.fromList text) == "@"
 
@@ -491,6 +508,6 @@ getDefaultLanguageExtensions = List.filterMap <| trimPrefix "-X"
 getPackageDbs :: List Prelude.String -> List Prelude.String
 getPackageDbs options = List.concat [[l, r] | (l, r) <- Prelude.zip options (List.drop 1 options), l == "-package-db"]
 
-exampleFromText :: Prelude.String -> Result Error Example
-exampleFromText val =
-  toExample emptySrcSpan (Prelude.lines val)
+taskFromResult :: Result err a -> Task err a
+taskFromResult (Err err) = Task.fail err
+taskFromResult (Ok a) = Task.succeed a

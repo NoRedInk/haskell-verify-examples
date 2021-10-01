@@ -43,6 +43,8 @@ data Module = Module
   }
   deriving (Show)
 
+newtype Comment = Comment {codeBlocks :: List CodeBlock} deriving (Show)
+
 data ModuleInfo = ModuleInfo
   { moduleName :: Maybe Text, -- Headless modules might not have a name
     moduleSource :: LHE.SrcSpanInfo,
@@ -72,9 +74,9 @@ newtype PackageDb = PackageDb
   {unPackageDb :: Prelude.String}
   deriving (Show)
 
-data Comment
-  = CodeBlockComment Example
-  | ContextBlockComment LHE.SrcLoc.SrcSpan (List Prelude.String)
+data CodeBlock
+  = ExampleBlock Example
+  | ContextBlock LHE.SrcLoc.SrcSpan (List Prelude.String)
   deriving (Show, Eq)
 
 data Example
@@ -117,3 +119,20 @@ shimModuleWithImports imports =
 
 makeSimpleImport :: Text -> Hint.ModuleImport
 makeSimpleImport name = Hint.ModuleImport (Text.toList name) Hint.NotQualified Hint.NoImportList
+
+groupWhile :: (a -> a -> Bool) -> List a -> List (List a)
+groupWhile isSameGroup items =
+  List.foldr
+    ( \x acc ->
+        case acc of
+          [] ->
+            [(x, [])]
+          (y, restOfGroup) : groups ->
+            if isSameGroup x y
+              then (x, y : restOfGroup) : groups
+              else (x, []) : acc
+    )
+    []
+    items
+    |> List.map (\(head, tail) -> head : tail)
+    |> List.reverse
