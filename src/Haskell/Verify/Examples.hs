@@ -463,12 +463,19 @@ toExample :: LHE.SrcLoc.SrcSpan -> List Prelude.String -> Result Error Example
 toExample srcSpan source =
   case LHE.Lexer.lexTokenStream (Prelude.unlines source) of
     LHE.Parser.ParseOk tokens ->
-      Ok
-        <| if Foldable.any ((\sym -> sym == LHE.Lexer.VarSym "==>" || sym == LHE.Lexer.VarSym "==?") << LHE.Lexer.unLoc) tokens
-          then VerifiedExample srcSpan source
-          else UnverifiedExample srcSpan source
+      if Foldable.any ((\sym -> List.member sym knownSymbols) << LHE.Lexer.unLoc) tokens
+        then Ok (VerifiedExample srcSpan source)
+        else Ok (UnverifiedExample srcSpan source)
     LHE.Parser.ParseFailed srcLoc msg ->
       Err (ParseFailed srcLoc msg)
+
+knownSymbols :: List LHE.Lexer.Token
+knownSymbols =
+  List.map
+    LHE.Lexer.VarSym
+    [ "==>",
+      "==?"
+    ]
 
 data Reporter
   = Stdout
