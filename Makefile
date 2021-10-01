@@ -8,7 +8,12 @@ haskell-verify-examples.cabal: package.yaml
 check: haskell-verify-examples.cabal
 	cabal test
 
-watch: haskell-verify-examples.cabal
+clean:
+	rm -rf ./dist-newstyle
+	rm -rf *.cabal
+	rm -rf ~/haskell-verify-examples.overmind.sock
+
+watch: clean haskell-verify-examples.cabal
 	OVERMIND_CAN_DIE=cli-smoke-test \
 	SHELL=`which bash` \
 	overmind start --title haskell-verify-examples \
