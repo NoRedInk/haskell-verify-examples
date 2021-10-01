@@ -464,7 +464,7 @@ toExample srcSpan source =
   case LHE.Lexer.lexTokenStream (Prelude.unlines source) of
     LHE.Parser.ParseOk tokens ->
       Ok
-        <| if Foldable.any ((== LHE.Lexer.VarSym "==>") << LHE.Lexer.unLoc) tokens
+        <| if Foldable.any ((\sym -> sym == LHE.Lexer.VarSym "==>" || sym == LHE.Lexer.VarSym "==?") << LHE.Lexer.unLoc) tokens
           then VerifiedExample srcSpan source
           else UnverifiedExample srcSpan source
     LHE.Parser.ParseFailed srcLoc msg ->

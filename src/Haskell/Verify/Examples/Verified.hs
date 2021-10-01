@@ -6,4 +6,5 @@ data Verified
   = Verified
   | Unverified Prelude.String Prelude.String
   | NoExampleResult
+  | HelpTodo Prelude.String
   deriving (Prelude.Show)

@@ -100,6 +100,8 @@ examplesSummary =
             summary {unverified = example : unverified summary}
           ExampleVerifySuccess NoExampleResult ->
             summary {noExamples = example : noExamples summary}
+          ExampleVerifySuccess (HelpTodo _) ->
+            summary {noExamples = example : noExamples summary}
           ExampleVerifyFailed _ -> summary {evaluationFailed = example : evaluationFailed summary}
     )
     (Summary [] [] [] [])
