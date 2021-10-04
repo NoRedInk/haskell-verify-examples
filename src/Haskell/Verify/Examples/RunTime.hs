@@ -13,6 +13,6 @@ x ==> y =
 
 infixl 0 ==?
 
-(==?) :: (Prelude.Show a) => a -> () -> Verified
-x ==? () =
+(==?) :: (Prelude.Show a) => a -> b -> Verified
+x ==? _ =
   HelpTodo (Prelude.show x)

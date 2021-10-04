@@ -9,4 +9,6 @@ import NriPrelude
 -- > test ==? ()
 --
 -- > [1,2,3,4] ==? ()
+--
+-- > [1,2,3,4] ==? Nothing
 test = Just "foo"
