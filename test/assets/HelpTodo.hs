@@ -6,9 +6,7 @@ import NriPrelude
 
 -- hello world
 --
--- > test ==? ()
+-- ? test
 --
--- > [1,2,3,4] ==? ()
---
--- > [1,2,3,4] ==? Nothing
+-- ? [1,2,3,4]
 test = Just "foo"

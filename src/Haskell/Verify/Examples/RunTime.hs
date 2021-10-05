@@ -1,4 +1,4 @@
-module Haskell.Verify.Examples.RunTime ((==>), (==?)) where
+module Haskell.Verify.Examples.RunTime ((==>), evaluteExampleTodo) where
 
 import Haskell.Verify.Examples.Verified (Verified (..))
 import qualified Prelude
@@ -11,8 +11,5 @@ x ==> y =
     then Verified
     else Unverified (Prelude.show x) (Prelude.show y)
 
-infixl 0 ==?
-
-(==?) :: (Prelude.Show a) => a -> b -> Verified
-x ==? _ =
-  HelpTodo (Prelude.show x)
+evaluteExampleTodo :: (Prelude.Show a) => a -> Verified
+evaluteExampleTodo x = HelpTodo (Prelude.show x)

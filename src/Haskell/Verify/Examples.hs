@@ -393,6 +393,13 @@ toComment cs =
                 |> toExample (commentsSrcSpan comments)
                 |> Result.map ExampleBlock
                 |> Just
+            HelpTodoType ->
+              comments
+                |> List.map (commentValue >> Prelude.dropWhile (/= '?') >> Prelude.drop 2)
+                |> (\xs -> "evaluteExampleTodo (" : xs ++ [")"])
+                |> toExample (commentsSrcSpan comments)
+                |> Result.map ExampleBlock
+                |> Just
             ContextBlockType ->
               comments
                 |> List.map commentValue
@@ -406,7 +413,11 @@ toComment cs =
     |> combineResults
     |> Result.map Comment
 
-data CommentType = CodeBlockType | PlainTextType | ContextBlockType
+data CommentType
+  = CodeBlockType
+  | PlainTextType
+  | ContextBlockType
+  | HelpTodoType
   deriving (Show, Eq)
 
 mergeComments ::
@@ -428,18 +439,23 @@ mergeComments acc isInContext (next : restNext) =
 
 commentType :: LHE.Comments.Comment -> CommentType
 commentType (LHE.Comments.Comment _ _ text) =
-  if hasArrow text
+  if hasPrefix ">" text
     then CodeBlockType
     else
-      if hasAt text
-        then ContextBlockType
-        else PlainTextType
+      if hasPrefix "?" text
+        then HelpTodoType
+        else
+          if hasAt text
+            then ContextBlockType
+            else PlainTextType
 
+hasAt :: Prelude.String -> Bool
 hasAt text = Text.trim (Text.fromList text) == "@"
 
-hasArrow text =
-  Text.startsWith " > " (Text.fromList text)
-    || Text.trim (Text.fromList text) == ">"
+hasPrefix :: Text -> Prelude.String -> Bool
+hasPrefix prefix text =
+  Text.startsWith (" " ++ prefix ++ " ") (Text.fromList text)
+    || Text.trim (Text.fromList text) == prefix
 
 concatComment :: LHE.Comments.Comment -> LHE.Comments.Comment -> LHE.Comments.Comment
 concatComment commentA@(LHE.Comments.Comment _ srcSpanA a) commentB@(LHE.Comments.Comment _ srcSpanB b) =
@@ -463,19 +479,17 @@ toExample :: LHE.SrcLoc.SrcSpan -> List Prelude.String -> Result Error Example
 toExample srcSpan source =
   case LHE.Lexer.lexTokenStream (Prelude.unlines source) of
     LHE.Parser.ParseOk tokens ->
-      if Foldable.any ((\sym -> List.member sym knownSymbols) << LHE.Lexer.unLoc) tokens
+      if Foldable.any ((\sym -> List.member sym knownTokens) << LHE.Lexer.unLoc) tokens
         then Ok (VerifiedExample srcSpan source)
         else Ok (UnverifiedExample srcSpan source)
     LHE.Parser.ParseFailed srcLoc msg ->
       Err (ParseFailed srcLoc msg)
 
-knownSymbols :: List LHE.Lexer.Token
-knownSymbols =
-  List.map
-    LHE.Lexer.VarSym
-    [ "==>",
-      "==?"
-    ]
+knownTokens :: List LHE.Lexer.Token
+knownTokens =
+  [ LHE.Lexer.VarSym "==>",
+    LHE.Lexer.VarId "evaluteExampleTodo"
+  ]
 
 data Reporter
   = Stdout
