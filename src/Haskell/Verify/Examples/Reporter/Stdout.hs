@@ -164,8 +164,8 @@ renderExample terminalWidth (example, ExampleVerifySuccess verified) =
   case verified of
     Verified -> []
     Unverified expected actual ->
-      let actualText = Text.fromList (Text.Show.Pretty.ppShow actual)
-          expectedText = Text.fromList (Text.Show.Pretty.ppShow expected)
+      let actualText = Text.fromList actual
+          expectedText = Text.fromList expected
           numLines text = List.length (Text.lines text)
        in [ chunk "The example was incorrect and couldn't be verified.",
             chunk "\n",
@@ -187,7 +187,7 @@ renderExample terminalWidth (example, ExampleVerifySuccess verified) =
     HelpTodo actual ->
       [ chunk "This example evaluates to the following value",
         chunk "\n",
-        Text.Show.Pretty.ppShow actual
+        actual
           |> Text.fromList
           |> chunk
       ]

@@ -28,13 +28,13 @@ test/assets/UnverifiedExamples.hs:14
 [m[2m  18: -- | more stuff
 [m[2m  19: --
 [mThe example was incorrect and couldn't be verified.
- ▼
-"2"
+▼
+2
 ╷
 │ ==>
 ╵
-"3"
- ▲
+3
+▲
 
 
 test/assets/UnverifiedExamples.hs:20
@@ -50,12 +50,12 @@ test/assets/UnverifiedExamples.hs:20
 [m[2m  24: -- > ] |> map (+ 1)
 [m[2m  25: -- > ==> [ 2, 4, 5 ]
 [mThe example was incorrect and couldn't be verified.
-    ▼▼
-"[2,3,4,5]"
+   ▼▼
+[2,3,4,5]
 ╷
 │ ==>
 ╵
-"[2,4,5]"
+[2,4,5]
 
 
 test/assets/UnverifiedExamples.hs:29

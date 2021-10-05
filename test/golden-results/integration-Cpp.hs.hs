@@ -8,13 +8,13 @@ test/assets/Cpp.hs:11
 [m[2m  10: 
 [m✗ 11: -- > uniqueValue ==> 2
 The example was incorrect and couldn't be verified.
- ▼
-"1"
+▼
+1
 ╷
 │ ==>
 ╵
-"2"
- ▲
+2
+▲
 
 [4mNot all examples verified![m
 Verified: 0

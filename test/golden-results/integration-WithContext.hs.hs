@@ -13,13 +13,13 @@ test/assets/WithContext.hs:23
 [m[2m  27: -- |
 [m[2m  28: --
 [mThe example was incorrect and couldn't be verified.
-        ▼
-"Just \"b\""
+      ▼
+Just "b"
 ╷
 │ ==>
 ╵
-"Just \"a\""
-        ▲
+Just "a"
+      ▲
 
 
 test/assets/WithContext.hs:31

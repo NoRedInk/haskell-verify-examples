@@ -12,7 +12,7 @@ test/assets/HelpTodo.hs:9
 [m[2m  12: test = Just "foo"
 [m[2m  13: 
 [mThis example evaluates to the following value
-"Just \"foo\""
+Just "foo"
 
 
 test/assets/HelpTodo.hs:11
@@ -25,7 +25,7 @@ test/assets/HelpTodo.hs:11
 [2m  12: test = Just "foo"
 [m[2m  13: 
 [mThis example evaluates to the following value
-"[1,2,3,4]"
+[1,2,3,4]
 
 [4mNot all examples verified![m
 Verified: 0
