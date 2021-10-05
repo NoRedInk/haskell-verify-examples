@@ -8,7 +8,7 @@ haskell-verify-examples.cabal: package.yaml
 check: haskell-verify-examples.cabal
 	cabal test
 
-install-exe: haskell-verify-examples.cabal
+install-exe: clean haskell-verify-examples.cabal
 	cabal install exe:haskell-verify-examples --overwrite-policy=always
 
 clean:
