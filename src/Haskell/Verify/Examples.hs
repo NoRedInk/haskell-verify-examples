@@ -176,14 +176,12 @@ evalIO ::
   Maybe Context ->
   Prelude.String ->
   Prelude.IO Verified
-evalIO CradleInfo {packageDbs, languageExtensions, importPaths} moduleInfo maybeContext s = do
+evalIO CradleInfo {packageDbs, packageIds, languageExtensions, importPaths} moduleInfo maybeContext s = do
   let interpreter =
-        case packageDbs of
+        case List.map unPackageId packageIds
+          ++ List.map unPackageDb packageDbs of
           [] -> Hint.runInterpreter
-          _ ->
-            packageDbs
-              |> List.map unPackageDb
-              |> Hint.Unsafe.unsafeRunInterpreterWithArgs
+          args -> Hint.Unsafe.unsafeRunInterpreterWithArgs args
   result <-
     interpreter <| do
       preload <- Hint.lift preloadPaths
@@ -263,7 +261,8 @@ tryLoadImplicitCradle handler path =
       CradleInfo
         { languageExtensions = List.map LanguageExtension (getDefaultLanguageExtensions opts),
           importPaths = List.map ImportPath (getSearchPaths opts),
-          packageDbs = List.map PackageDb (getPackageDbs opts)
+          packageDbs = List.map PackageDb (getPackageDbs opts),
+          packageIds = List.map PackageId (getPackageIds opts)
         }
 
 examples :: Comment -> List Example
@@ -527,7 +526,18 @@ getDefaultLanguageExtensions :: List Prelude.String -> List Prelude.String
 getDefaultLanguageExtensions = List.filterMap <| trimPrefix "-X"
 
 getPackageDbs :: List Prelude.String -> List Prelude.String
-getPackageDbs options = List.concat [[l, r] | (l, r) <- Prelude.zip options (List.drop 1 options), l == "-package-db"]
+getPackageDbs = getTuples "-package-db"
+
+getPackageIds :: List Prelude.String -> List Prelude.String
+getPackageIds = getTuples "-package-id"
+
+getTuples :: Prelude.String -> List Prelude.String -> List Prelude.String
+getTuples key options =
+  List.concat
+    [ [l, r]
+      | (l, r) <- Prelude.zip (Data.List.init options) (List.drop 1 options),
+        l == key
+    ]
 
 taskFromResult :: Result err a -> Task err a
 taskFromResult (Err err) = Task.fail err

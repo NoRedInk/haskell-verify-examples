@@ -56,11 +56,12 @@ data ModuleInfo = ModuleInfo
 data CradleInfo = CradleInfo
   { languageExtensions :: List LanguageExtension,
     importPaths :: List ImportPath,
-    packageDbs :: List PackageDb
+    packageDbs :: List PackageDb,
+    packageIds :: List PackageId
   }
 
 emptyCradleInfo :: CradleInfo
-emptyCradleInfo = CradleInfo [] [] []
+emptyCradleInfo = CradleInfo [] [] [] []
 
 newtype LanguageExtension = LanguageExtension
   {unLanguageExtension :: Prelude.String}
@@ -72,6 +73,10 @@ newtype ImportPath = ImportPath
 
 newtype PackageDb = PackageDb
   {unPackageDb :: Prelude.String}
+  deriving (Show)
+
+newtype PackageId = PackageId
+  {unPackageId :: Prelude.String}
   deriving (Show)
 
 data CodeBlock
