@@ -177,7 +177,7 @@ evalIO ::
   Maybe Context ->
   Prelude.String ->
   Prelude.IO Verified
-evalIO CradleInfo {packageDbs, packageIds, languageExtensions, importPaths} moduleInfo maybeContext s = do
+evalIO CradleInfo {root, packageDbs, languageExtensions, importPaths} moduleInfo maybeContext s = do
   let interpreter =
         case coerce packageIds ++ coerce packageDbs of
           [] -> Hint.runInterpreter
@@ -200,8 +200,14 @@ evalIO CradleInfo {packageDbs, packageIds, languageExtensions, importPaths} modu
       if List.isEmpty (List.filter (\lang -> not (List.member lang ignoreExts)) unknownLangs)
         then Prelude.pure ()
         else Exception.throwIO (UnkownLanguageExtension unknownLangs)
-      let searchPaths = coerce importPaths
-      Hint.set [Hint.languageExtensions Hint.:= langs, Hint.searchPath Hint.:= searchPaths]
+      let searchPaths =
+            coerce root :
+            (coerce root ++ "/src") :
+            coerce importPaths
+      Hint.set
+        [ Hint.languageExtensions Hint.:= langs,
+          Hint.searchPath Hint.:= searchPaths
+        ]
 
       [ if moduleFilePath moduleInfo == ""
           then []
@@ -226,7 +232,7 @@ evalIO CradleInfo {packageDbs, packageIds, languageExtensions, importPaths} modu
               |> List.filterMap identity
               |> List.map makeSimpleImport
 
-      Hint.setImportsF (exampleImports ++ imports moduleInfo)
+      Hint.setImportsF (imports moduleInfo ++ exampleImports)
       Hint.interpret s (Hint.as :: Verified)
   case result of
     Prelude.Left err -> Exception.throwIO err
@@ -257,12 +263,14 @@ tryLoadImplicitCradle handler path =
     cradle <- (loadImplicitCradle handler) path
     componentOptions <- (getCompilerOptions handler) path cradle
     let opts = HIE.Bios.Types.componentOptions componentOptions
+    let componentRoot = HIE.Bios.Types.componentRoot componentOptions
     Task.succeed
       CradleInfo
         { languageExtensions = List.map LanguageExtension (getDefaultLanguageExtensions opts),
           importPaths = List.map ImportPath (getSearchPaths opts),
           packageDbs = List.map PackageDb (getPackageDbs opts),
           packageIds = List.map PackageId (getPackageIds opts)
+          root = Root componentRoot
         }
 
 examples :: Comment -> List Example

@@ -58,10 +58,11 @@ data CradleInfo = CradleInfo
     importPaths :: List ImportPath,
     packageDbs :: List PackageDb,
     packageIds :: List PackageId
+    root :: Root
   }
 
 emptyCradleInfo :: CradleInfo
-emptyCradleInfo = CradleInfo [] [] [] []
+emptyCradleInfo = CradleInfo [] [] [] (Root "")
 
 newtype LanguageExtension = LanguageExtension
   {unLanguageExtension :: Prelude.String}
@@ -77,6 +78,8 @@ newtype PackageDb = PackageDb
 
 newtype PackageId = PackageId
   {unPackageId :: Prelude.String}
+newtype Root = Root
+  {unRoot :: Prelude.String}
   deriving (Show)
 
 data CodeBlock
