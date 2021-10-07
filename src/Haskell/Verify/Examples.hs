@@ -16,6 +16,7 @@ where
 
 import qualified Control.Concurrent.Async as Async
 import qualified Control.Exception.Safe as Exception
+import Data.Coerce (coerce)
 import qualified Data.Foldable as Foldable
 import qualified Data.List
 import qualified Data.Text.IO
@@ -178,8 +179,7 @@ evalIO ::
   Prelude.IO Verified
 evalIO CradleInfo {packageDbs, packageIds, languageExtensions, importPaths} moduleInfo maybeContext s = do
   let interpreter =
-        case List.map unPackageId packageIds
-          ++ List.map unPackageDb packageDbs of
+        case coerce packageIds ++ coerce packageDbs of
           [] -> Hint.runInterpreter
           args -> Hint.Unsafe.unsafeRunInterpreterWithArgs args
   result <-
@@ -200,7 +200,7 @@ evalIO CradleInfo {packageDbs, packageIds, languageExtensions, importPaths} modu
       if List.isEmpty (List.filter (\lang -> not (List.member lang ignoreExts)) unknownLangs)
         then Prelude.pure ()
         else Exception.throwIO (UnkownLanguageExtension unknownLangs)
-      let searchPaths = List.map unImportPath importPaths
+      let searchPaths = coerce importPaths
       Hint.set [Hint.languageExtensions Hint.:= langs, Hint.searchPath Hint.:= searchPaths]
 
       [ if moduleFilePath moduleInfo == ""
