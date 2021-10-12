@@ -177,9 +177,9 @@ evalIO ::
   Maybe Context ->
   Prelude.String ->
   Prelude.IO Verified
-evalIO CradleInfo {root, packageDbs, languageExtensions, importPaths} moduleInfo maybeContext s = do
+evalIO CradleInfo {packageDbs, languageExtensions, importPaths} moduleInfo maybeContext s = do
   let interpreter =
-        case coerce packageIds ++ coerce packageDbs of
+        case coerce packageDbs of
           [] -> Hint.runInterpreter
           args -> Hint.Unsafe.unsafeRunInterpreterWithArgs args
   result <-
@@ -200,10 +200,7 @@ evalIO CradleInfo {root, packageDbs, languageExtensions, importPaths} moduleInfo
       if List.isEmpty (List.filter (\lang -> not (List.member lang ignoreExts)) unknownLangs)
         then Prelude.pure ()
         else Exception.throwIO (UnkownLanguageExtension unknownLangs)
-      let searchPaths =
-            coerce root :
-            (coerce root ++ "/src") :
-            coerce importPaths
+      let searchPaths = coerce importPaths
       Hint.set
         [ Hint.languageExtensions Hint.:= langs,
           Hint.searchPath Hint.:= searchPaths
@@ -266,11 +263,9 @@ tryLoadImplicitCradle handler path =
     let componentRoot = HIE.Bios.Types.componentRoot componentOptions
     Task.succeed
       CradleInfo
-        { languageExtensions = List.map LanguageExtension (getDefaultLanguageExtensions opts),
-          importPaths = List.map ImportPath (getSearchPaths opts),
-          packageDbs = List.map PackageDb (getPackageDbs opts),
-          packageIds = List.map PackageId (getPackageIds opts)
-          root = Root componentRoot
+        { languageExtensions = getDefaultLanguageExtensions opts,
+          importPaths = getSearchPaths opts,
+          packageDbs = getPackageDbs opts
         }
 
 examples :: Comment -> List Example
@@ -527,17 +522,14 @@ trimPrefix prefix text =
     then Just <| Data.List.drop (Prelude.length prefix) text
     else Nothing
 
-getSearchPaths :: List Prelude.String -> List Prelude.String
-getSearchPaths = List.filterMap <| trimPrefix "-i"
+getSearchPaths :: List Prelude.String -> List ImportPath
+getSearchPaths = List.filterMap (trimPrefix "-i") >> coerce
 
-getDefaultLanguageExtensions :: List Prelude.String -> List Prelude.String
-getDefaultLanguageExtensions = List.filterMap <| trimPrefix "-X"
+getDefaultLanguageExtensions :: List Prelude.String -> List LanguageExtension
+getDefaultLanguageExtensions = List.filterMap (trimPrefix "-X") >> coerce
 
-getPackageDbs :: List Prelude.String -> List Prelude.String
-getPackageDbs = getTuples "-package-db"
-
-getPackageIds :: List Prelude.String -> List Prelude.String
-getPackageIds = getTuples "-package-id"
+getPackageDbs :: List Prelude.String -> List PackageDb
+getPackageDbs = getTuples "-package-db" >> coerce
 
 getTuples :: Prelude.String -> List Prelude.String -> List Prelude.String
 getTuples key options =
