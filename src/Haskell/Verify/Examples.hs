@@ -200,10 +200,9 @@ evalIO CradleInfo {packageDbs, languageExtensions, importPaths} moduleInfo maybe
       if List.isEmpty (List.filter (\lang -> not (List.member lang ignoreExts)) unknownLangs)
         then Prelude.pure ()
         else Exception.throwIO (UnkownLanguageExtension unknownLangs)
-      let searchPaths = coerce importPaths
       Hint.set
         [ Hint.languageExtensions Hint.:= langs,
-          Hint.searchPath Hint.:= searchPaths
+          Hint.searchPath Hint.:= coerce importPaths
         ]
 
       [ if moduleFilePath moduleInfo == ""
