@@ -7,13 +7,13 @@ test/assets/Headless.hs:3
 [m[2m  1: testHeadless = 1
 [m[2m  2: 
 [mThe example was incorrect and couldn't be verified.
- ▼
-"1"
+▼
+1
 ╷
 │ ==>
 ╵
-"2"
- ▲
+2
+▲
 
 [4mNot all examples verified![m
 Verified: 1

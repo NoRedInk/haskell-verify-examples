@@ -98,7 +98,9 @@ examplesSummary =
             summary {verified = example : verified summary}
           ExampleVerifySuccess (Unverified _ _) ->
             summary {unverified = example : unverified summary}
-          ExampleVerifySuccess NoExampleResult ->
+          ExampleVerifySuccess Todo ->
+            summary {noExamples = example : noExamples summary}
+          ExampleVerifySuccess (HelpTodo _) ->
             summary {noExamples = example : noExamples summary}
           ExampleVerifyFailed _ -> summary {evaluationFailed = example : evaluationFailed summary}
     )
@@ -162,8 +164,8 @@ renderExample terminalWidth (example, ExampleVerifySuccess verified) =
   case verified of
     Verified -> []
     Unverified expected actual ->
-      let expectedText = Text.fromList (Text.Show.Pretty.ppShow actual)
-          actualText = Text.fromList (Text.Show.Pretty.ppShow expected)
+      let actualText = Text.fromList actual
+          expectedText = Text.fromList expected
           numLines text = List.length (Text.lines text)
        in [ chunk "The example was incorrect and couldn't be verified.",
             chunk "\n",
@@ -173,15 +175,22 @@ renderExample terminalWidth (example, ExampleVerifySuccess verified) =
                   { Diff.separatorText = Just "==>",
                     Diff.wrapping = Diff.Wrap (Prelude.fromIntegral terminalWidth),
                     Diff.multilineContext =
-                      if numLines expectedText < 6 && numLines actualText < 6
+                      if numLines actualText < 6 && numLines expectedText < 6
                         then Diff.FullContext
                         else Diff.Surrounding 2 "..."
                   }
-                actualText
                 expectedText
+                actualText
           ]
-    NoExampleResult ->
-      ["No expected result for example."]
+    Todo ->
+      ["TODO: No expected result for example."]
+    HelpTodo actual ->
+      [ chunk "This example evaluates to the following value",
+        chunk "\n",
+        actual
+          |> Text.fromList
+          |> chunk
+      ]
 
 readSrc :: Prelude.FilePath -> Prelude.IO (Maybe BS.ByteString)
 readSrc srcPath = do

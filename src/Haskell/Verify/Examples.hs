@@ -16,6 +16,7 @@ where
 
 import qualified Control.Concurrent.Async as Async
 import qualified Control.Exception.Safe as Exception
+import Data.Coerce (coerce)
 import qualified Data.Foldable as Foldable
 import qualified Data.List
 import qualified Data.Text.IO
@@ -127,7 +128,7 @@ verifyExample Handler {eval} cradleInfo moduleInfo maybeContext example =
     VerifiedExample _ code ->
       eval cradleInfo moduleInfo maybeContext (Prelude.unlines code)
     UnverifiedExample _ code ->
-      Task.succeed NoExampleResult
+      Task.succeed Todo
 
 preloadPaths :: Prelude.IO (List Prelude.FilePath)
 preloadPaths =
@@ -178,12 +179,9 @@ evalIO ::
   Prelude.IO Verified
 evalIO CradleInfo {packageDbs, languageExtensions, importPaths} moduleInfo maybeContext s = do
   let interpreter =
-        case packageDbs of
+        case coerce packageDbs of
           [] -> Hint.runInterpreter
-          _ ->
-            packageDbs
-              |> List.map unPackageDb
-              |> Hint.Unsafe.unsafeRunInterpreterWithArgs
+          args -> Hint.Unsafe.unsafeRunInterpreterWithArgs args
   result <-
     interpreter <| do
       preload <- Hint.lift preloadPaths
@@ -202,8 +200,10 @@ evalIO CradleInfo {packageDbs, languageExtensions, importPaths} moduleInfo maybe
       if List.isEmpty (List.filter (\lang -> not (List.member lang ignoreExts)) unknownLangs)
         then Prelude.pure ()
         else Exception.throwIO (UnkownLanguageExtension unknownLangs)
-      let searchPaths = List.map unImportPath importPaths
-      Hint.set [Hint.languageExtensions Hint.:= langs, Hint.searchPath Hint.:= searchPaths]
+      Hint.set
+        [ Hint.languageExtensions Hint.:= langs,
+          Hint.searchPath Hint.:= coerce importPaths
+        ]
 
       [ if moduleFilePath moduleInfo == ""
           then []
@@ -228,7 +228,7 @@ evalIO CradleInfo {packageDbs, languageExtensions, importPaths} moduleInfo maybe
               |> List.filterMap identity
               |> List.map makeSimpleImport
 
-      Hint.setImportsF (exampleImports ++ imports moduleInfo)
+      Hint.setImportsF (imports moduleInfo ++ exampleImports)
       Hint.interpret s (Hint.as :: Verified)
   case result of
     Prelude.Left err -> Exception.throwIO err
@@ -259,11 +259,12 @@ tryLoadImplicitCradle handler path =
     cradle <- (loadImplicitCradle handler) path
     componentOptions <- (getCompilerOptions handler) path cradle
     let opts = HIE.Bios.Types.componentOptions componentOptions
+    let componentRoot = HIE.Bios.Types.componentRoot componentOptions
     Task.succeed
       CradleInfo
-        { languageExtensions = List.map LanguageExtension (getDefaultLanguageExtensions opts),
-          importPaths = List.map ImportPath (getSearchPaths opts),
-          packageDbs = List.map PackageDb (getPackageDbs opts)
+        { languageExtensions = getDefaultLanguageExtensions opts,
+          importPaths = getSearchPaths opts,
+          packageDbs = getPackageDbs opts
         }
 
 examples :: Comment -> List Example
@@ -393,6 +394,13 @@ toComment cs =
                 |> toExample (commentsSrcSpan comments)
                 |> Result.map ExampleBlock
                 |> Just
+            HelpTodoType ->
+              comments
+                |> List.map (commentValue >> Prelude.dropWhile (/= '?') >> Prelude.drop 2)
+                |> (\xs -> "evaluteExampleTodo (" : xs ++ [")"])
+                |> toExample (commentsSrcSpan comments)
+                |> Result.map ExampleBlock
+                |> Just
             ContextBlockType ->
               comments
                 |> List.map commentValue
@@ -406,7 +414,11 @@ toComment cs =
     |> combineResults
     |> Result.map Comment
 
-data CommentType = CodeBlockType | PlainTextType | ContextBlockType
+data CommentType
+  = CodeBlockType
+  | PlainTextType
+  | ContextBlockType
+  | HelpTodoType
   deriving (Show, Eq)
 
 mergeComments ::
@@ -428,18 +440,23 @@ mergeComments acc isInContext (next : restNext) =
 
 commentType :: LHE.Comments.Comment -> CommentType
 commentType (LHE.Comments.Comment _ _ text) =
-  if hasArrow text
+  if hasPrefix ">" text
     then CodeBlockType
     else
-      if hasAt text
-        then ContextBlockType
-        else PlainTextType
+      if hasPrefix "?" text
+        then HelpTodoType
+        else
+          if hasAt text
+            then ContextBlockType
+            else PlainTextType
 
+hasAt :: Prelude.String -> Bool
 hasAt text = Text.trim (Text.fromList text) == "@"
 
-hasArrow text =
-  Text.startsWith " > " (Text.fromList text)
-    || Text.trim (Text.fromList text) == ">"
+hasPrefix :: Text -> Prelude.String -> Bool
+hasPrefix prefix text =
+  Text.startsWith (" " ++ prefix ++ " ") (Text.fromList text)
+    || Text.trim (Text.fromList text) == prefix
 
 concatComment :: LHE.Comments.Comment -> LHE.Comments.Comment -> LHE.Comments.Comment
 concatComment commentA@(LHE.Comments.Comment _ srcSpanA a) commentB@(LHE.Comments.Comment _ srcSpanB b) =
@@ -463,12 +480,17 @@ toExample :: LHE.SrcLoc.SrcSpan -> List Prelude.String -> Result Error Example
 toExample srcSpan source =
   case LHE.Lexer.lexTokenStream (Prelude.unlines source) of
     LHE.Parser.ParseOk tokens ->
-      Ok
-        <| if Foldable.any ((== LHE.Lexer.VarSym "==>") << LHE.Lexer.unLoc) tokens
-          then VerifiedExample srcSpan source
-          else UnverifiedExample srcSpan source
+      if Foldable.any ((\sym -> List.member sym knownTokens) << LHE.Lexer.unLoc) tokens
+        then Ok (VerifiedExample srcSpan source)
+        else Ok (UnverifiedExample srcSpan source)
     LHE.Parser.ParseFailed srcLoc msg ->
       Err (ParseFailed srcLoc msg)
+
+knownTokens :: List LHE.Lexer.Token
+knownTokens =
+  [ LHE.Lexer.VarSym "==>",
+    LHE.Lexer.VarId "evaluteExampleTodo"
+  ]
 
 data Reporter
   = Stdout
@@ -499,14 +521,22 @@ trimPrefix prefix text =
     then Just <| Data.List.drop (Prelude.length prefix) text
     else Nothing
 
-getSearchPaths :: List Prelude.String -> List Prelude.String
-getSearchPaths = List.filterMap <| trimPrefix "-i"
+getSearchPaths :: List Prelude.String -> List ImportPath
+getSearchPaths = List.filterMap (trimPrefix "-i") >> coerce
 
-getDefaultLanguageExtensions :: List Prelude.String -> List Prelude.String
-getDefaultLanguageExtensions = List.filterMap <| trimPrefix "-X"
+getDefaultLanguageExtensions :: List Prelude.String -> List LanguageExtension
+getDefaultLanguageExtensions = List.filterMap (trimPrefix "-X") >> coerce
 
-getPackageDbs :: List Prelude.String -> List Prelude.String
-getPackageDbs options = List.concat [[l, r] | (l, r) <- Prelude.zip options (List.drop 1 options), l == "-package-db"]
+getPackageDbs :: List Prelude.String -> List PackageDb
+getPackageDbs = getTuples "-package-db" >> coerce
+
+getTuples :: Prelude.String -> List Prelude.String -> List Prelude.String
+getTuples key options =
+  List.concat
+    [ [l, r]
+      | (l, r) <- Prelude.zip (Data.List.init options) (List.drop 1 options),
+        l == key
+    ]
 
 taskFromResult :: Result err a -> Task err a
 taskFromResult (Err err) = Task.fail err
