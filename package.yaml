@@ -27,6 +27,14 @@ executables:
       - text >= 1.2.3.1 && < 1.3
     main: Main.hs
     source-dirs: app
+  generate-documentation:
+    dependencies:
+      - base >= 4.12.0.0 && < 4.16
+      - haskell-verify-examples
+      - nri-prelude >= 0.1.0.0 && < 0.7
+      - temporary >= 1.3 && < 1.4
+    main: Main.hs
+    source-dirs: doc
 library:
   dependencies:
   - async >= 2.2.2 && < 2.3
