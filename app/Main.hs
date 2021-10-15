@@ -12,8 +12,8 @@ import qualified Prelude
 
 main :: Prelude.IO ()
 main = do
-  handler <- HVE.handler
   logHandler <- Platform.silentHandler
+  handler <- HVE.handler logHandler
   cwd <- System.Directory.getCurrentDirectory
   params <- System.Environment.getArgs
   files <- case params of

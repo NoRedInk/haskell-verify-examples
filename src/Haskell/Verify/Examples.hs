@@ -1,3 +1,5 @@
+{-# LANGUAGE RankNTypes #-}
+
 module Haskell.Verify.Examples
   ( Handler,
     handler,
@@ -39,7 +41,9 @@ import qualified Language.Preprocessor.Cpphs as Cpphs
 import NriPrelude
 import qualified Paths_haskell_verify_examples as DataPath
 import qualified Platform
+import qualified System.Directory
 import qualified System.IO
+import qualified System.IO.Temp
 import qualified Text.Read
 import qualified Prelude
 
@@ -52,13 +56,13 @@ data Handler = Handler
       Prelude.FilePath ->
       HIE.Bios.Types.Cradle HIE.Bios.Types.ComponentOptions ->
       Task Error HIE.Bios.Types.ComponentOptions,
-    writeTempFile :: List Prelude.String -> Task Error Prelude.FilePath,
+    withTempFile :: forall a. List Prelude.String -> (Prelude.FilePath -> Task Error a) -> Task Error a,
     readFile :: Prelude.FilePath -> Task Error Prelude.String,
     runCpphs :: Prelude.FilePath -> Prelude.String -> Task Error Prelude.String
   }
 
-handler :: Prelude.IO Handler
-handler = do
+handler :: Platform.LogHandler -> Prelude.IO Handler
+handler logHandler = do
   doAnything <- Platform.doAnythingHandler
   let eval a b c d =
         evalIO a b c d
@@ -89,16 +93,22 @@ handler = do
                 HIE.Bios.Types.CradleFail err -> Err (CradleFailed err)
             )
           |> Platform.doAnything doAnything
-  let writeTempFile contents =
-        writeTempFileIO contents
-          |> map Ok
+
+  let withTempFile contents go = 
+        (\filePath handle -> do 
+          Foldable.traverse_ (System.IO.hPutStrLn handle) contents
+          System.IO.hClose handle
+          Task.attempt logHandler (go filePath)
+        )
+          |> System.IO.Temp.withSystemTempFile "HaskellVerifiedExamples.hs" 
           |> Platform.doAnything doAnything
+
   Prelude.pure
     Handler
       { eval,
         loadImplicitCradle,
         getCompilerOptions,
-        writeTempFile,
+        withTempFile,
         readFile,
         runCpphs
       }
@@ -300,14 +310,12 @@ withContext handler moduleInfo comments go =
           case contextBlocks comments' of
             [] -> go Nothing comments'
             xs -> do
-              contextModulePath <-
-                [ ["module " ++ Text.toList contextModuleName ++ " where"],
-                  List.map renderImport (imports moduleInfo),
-                  xs
-                  ]
-                  |> List.concat
-                  |> writeTempFile handler
-              go (Just Context {contextModulePath, contextModuleName}) comments'
+              let fileContents = [ ["module " ++ Text.toList contextModuleName ++ " where"],
+                                    List.map renderImport (imports moduleInfo),
+                                    xs
+                                 ] |> List.concat
+
+              withTempFile handler fileContents (\filePath -> go (Context filePath contextModuleName |> Just) comments')
       )
     |> Task.parallel
     |> Task.map List.concat
@@ -507,14 +515,7 @@ report reporters result =
   ]
     |> List.filterMap identity
     |> Async.mapConcurrently_ identity
-
-writeTempFileIO :: List Prelude.String -> Prelude.IO Prelude.FilePath
-writeTempFileIO contents = do
-  (path, handle) <- System.IO.openTempFile "/tmp" "HaskellVerifiedExamples.hs"
-  _ <- Prelude.traverse (System.IO.hPutStrLn handle) contents
-  System.IO.hClose handle
-  Prelude.pure path
-
+    
 trimPrefix :: Prelude.String -> Prelude.String -> Maybe Prelude.String
 trimPrefix prefix text =
   if Data.List.isPrefixOf prefix text
