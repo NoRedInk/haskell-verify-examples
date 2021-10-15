@@ -26,7 +26,7 @@ tests assets =
     [ describe
         "parse"
         [ test "returns all comments" <| \() -> do
-            handler <- Expect.fromIO HVE.handler
+            handler <- Expect.fromIO (Platform.silentHandler >>= HVE.handler)
             result <-
               HVE.parse handler "test/assets/Simple.hs"
                 |> Expect.succeeds
@@ -34,7 +34,7 @@ tests assets =
               |> Debug.toString
               |> Expect.equalToContentsOf "test/golden-results/parse-simple.hs",
           test "distinguishs examples without `==>`" <| \() -> do
-            handler <- Expect.fromIO HVE.handler
+            handler <- Expect.fromIO (Platform.silentHandler >>= HVE.handler)
             result <-
               HVE.parse handler "test/assets/UnverifiedExamples.hs"
                 |> Expect.succeeds
@@ -42,7 +42,7 @@ tests assets =
               |> Debug.toString
               |> Expect.equalToContentsOf "test/golden-results/parse-unverified-examples.hs",
           test "parses context code" <| \() -> do
-            handler <- Expect.fromIO HVE.handler
+            handler <- Expect.fromIO (Platform.silentHandler >>= HVE.handler)
             result <-
               HVE.parse handler "test/assets/WithContext.hs"
                 |> Expect.succeeds
@@ -55,7 +55,7 @@ tests assets =
         ( List.map
             ( \modulePath ->
                 test ("verifies all examples from a file from " ++ Text.fromList modulePath) <| \() -> do
-                  handler <- Expect.fromIO HVE.handler
+                  handler <- Expect.fromIO (Platform.silentHandler >>= HVE.handler)
                   results <-
                     Expect.succeeds <| do
                       parsed <- HVE.parse handler ("test/assets/" ++ modulePath)
