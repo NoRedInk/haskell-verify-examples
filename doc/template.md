@@ -22,6 +22,27 @@ testFunction :: Int -> Int
 testFunction = (+1) 
 ```
 
+How about a failing example? 
+
+```haskell
+module Test where 
+    
+-- Below is a verified example
+-- > testFunction 1 ==> 3
+testFunction :: Int -> Int
+testFunction = (+1) 
+```
+
+You can also inquire about the value of an expression using `>?`
+
+```haskell
+module Test where 
+
+-- ? testFunc 1
+testFunc :: Int -> Int
+testFunc = (+1)
+```
+
 ## Development
 
 1. `$ direnv allow`
