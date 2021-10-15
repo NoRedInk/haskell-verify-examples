@@ -44,7 +44,7 @@ import qualified Text.Read
 import qualified Prelude
 
 data Handler = Handler
-  { eval :: CradleInfo -> ModuleInfo -> Maybe Context -> Prelude.String -> Task EvalError Verified,
+  { eval :: CradleInfo -> ModuleInfo -> ContextPath -> Prelude.String -> Task EvalError Verified,
     loadImplicitCradle ::
       Prelude.FilePath ->
       Task Error (HIE.Bios.Types.Cradle HIE.Bios.Types.ComponentOptions),
@@ -52,7 +52,7 @@ data Handler = Handler
       Prelude.FilePath ->
       HIE.Bios.Types.Cradle HIE.Bios.Types.ComponentOptions ->
       Task Error HIE.Bios.Types.ComponentOptions,
-    writeTempFile :: List Prelude.String -> Task Error Prelude.FilePath,
+    writeTempFile :: Text -> Task Error Prelude.FilePath,
     readFile :: Prelude.FilePath -> Task Error Prelude.String,
     runCpphs :: Prelude.FilePath -> Prelude.String -> Task Error Prelude.String
   }
@@ -120,7 +120,7 @@ verifyExample ::
   Handler ->
   CradleInfo ->
   ModuleInfo ->
-  Maybe Context ->
+  ContextPath ->
   Example ->
   Task EvalError Verified
 verifyExample Handler {eval} cradleInfo moduleInfo maybeContext example =
@@ -174,10 +174,10 @@ makeImport importDecl =
 evalIO ::
   CradleInfo ->
   ModuleInfo ->
-  Maybe Context ->
+  ContextPath ->
   Prelude.String ->
   Prelude.IO Verified
-evalIO CradleInfo {packageDbs, languageExtensions, importPaths} moduleInfo maybeContext s = do
+evalIO CradleInfo {packageDbs, languageExtensions, importPaths} moduleInfo contextPath s = do
   let interpreter =
         case coerce packageDbs of
           [] -> Hint.runInterpreter
@@ -205,15 +205,7 @@ evalIO CradleInfo {packageDbs, languageExtensions, importPaths} moduleInfo maybe
           Hint.searchPath Hint.:= coerce importPaths
         ]
 
-      [ if moduleFilePath moduleInfo == ""
-          then []
-          else [moduleFilePath moduleInfo],
-        case maybeContext of
-          Nothing -> []
-          Just Context {contextModulePath} -> [contextModulePath],
-        preload
-        ]
-        |> List.concat
+      unContextPath contextPath : preload
         |> Hint.loadModules
 
       case moduleName moduleInfo of
@@ -222,8 +214,7 @@ evalIO CradleInfo {packageDbs, languageExtensions, importPaths} moduleInfo maybe
 
       let exampleImports =
             [ Just "Haskell.Verify.Examples.RunTime",
-              Just "Haskell.Verify.Examples.Verified",
-              Maybe.map contextModuleName maybeContext
+              Just "Haskell.Verify.Examples.Verified"
             ]
               |> List.filterMap identity
               |> List.map makeSimpleImport
@@ -286,28 +277,29 @@ contextBlocks comment =
             ExampleBlock _ -> []
       )
 
-data Context = Context
-  { contextModulePath :: Prelude.FilePath,
-    contextModuleName :: Text
-  }
+newtype ContextPath = ContextPath { unContextPath :: Prelude.FilePath }
+  deriving (Show)
 
-withContext :: Handler -> ModuleInfo -> List Comment -> (Maybe Context -> Comment -> Task Error (List a)) -> Task Error (List a)
+withContext :: Handler -> ModuleInfo -> List Comment -> (ContextPath -> Comment -> Task Error (List a)) -> Task Error (List a)
 withContext handler moduleInfo comments go =
   comments
     |> List.indexedMap
       ( \index comments' -> do
-          let contextModuleName = "HaskellVerifiedExamplesContext" ++ Text.fromInt index
+          let modulePath = moduleFilePath moduleInfo
           case contextBlocks comments' of
-            [] -> go Nothing comments'
+            -- If there are no context blocks, let's spare ourselve writing the temp file
+            [] -> go (ContextPath modulePath) comments'
+
             xs -> do
-              contextModulePath <-
-                [ ["module " ++ Text.toList contextModuleName ++ " where"],
-                  List.map renderImport (imports moduleInfo),
-                  xs
-                  ]
-                  |> List.concat
+              fileContents <- readFile handler modulePath
+
+              contextPath <-
+                fileContents : xs
+                  |> List.map Text.fromList 
+                  |> Text.join "\n"
                   |> writeTempFile handler
-              go (Just Context {contextModulePath, contextModuleName}) comments'
+
+              go (ContextPath contextPath) comments'
       )
     |> Task.parallel
     |> Task.map List.concat
@@ -508,10 +500,10 @@ report reporters result =
     |> List.filterMap identity
     |> Async.mapConcurrently_ identity
 
-writeTempFileIO :: List Prelude.String -> Prelude.IO Prelude.FilePath
+writeTempFileIO :: Text -> Prelude.IO Prelude.FilePath
 writeTempFileIO contents = do
   (path, handle) <- System.IO.openTempFile "/tmp" "HaskellVerifiedExamples.hs"
-  _ <- Prelude.traverse (System.IO.hPutStrLn handle) contents
+  System.IO.hPutStr handle (Text.toList contents)
   System.IO.hClose handle
   Prelude.pure path
 
