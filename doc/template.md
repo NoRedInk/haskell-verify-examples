@@ -14,6 +14,8 @@ haskell-verify-examples will try to load the cradle automatically from the cwd t
 ## Writing Verified Examples
 
 ```haskell
+module Test where 
+    
 -- Below is a verified example
 -- > testFunction 1 ==> 2
 testFunction :: Int -> Int

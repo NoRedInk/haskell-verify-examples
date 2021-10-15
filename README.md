@@ -14,16 +14,16 @@ haskell-verify-examples will try to load the cradle automatically from the cwd t
 ## Writing Verified Examples
 
 ```haskell
+module Test where 
+    
 -- Below is a verified example
 -- > testFunction 1 ==> 2
--- 
--- If the left hand size and the r
 testFunction :: Int -> Int
 testFunction = (+1) 
 ```
 
 ```
-Ok [(VerifiedExample (SrcSpan "/private/tmp/DocModule73855-0.hs" 2 1 2 26) ["testFunction 1 ==> 2"],ExampleVerifyFailed (InterpreterError (WontCompile [GhcError {errMsg = "<interactive>:2:1: error:\n    Variable not in scope: testFunction :: t0 -> a0"}])))]
+Ok [(VerifiedExample (SrcSpan "/private/tmp/DocModule80681-4.hs" 4 1 4 26) ["testFunction 1 ==> 2"],ExampleVerifySuccess Verified)]
 ```
 
 

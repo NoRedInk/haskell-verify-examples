@@ -15,7 +15,7 @@ isEndBlock = List.isPrefixOf "```"
 runAnonymousBlock :: Prelude.String -> Prelude.IO Prelude.String
 runAnonymousBlock s = do
   logHandler <- Platform.silentHandler
-  handler <- HVE.handler logHandler
+  handler <- HVE.handler
   System.IO.Temp.withSystemTempFile "DocModule.hs" (\filePath handle -> do
       System.IO.hPutStr handle s
       System.IO.hClose handle
