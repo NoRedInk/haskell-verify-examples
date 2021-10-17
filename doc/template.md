@@ -33,7 +33,7 @@ testFunction :: Int -> Int
 testFunction = (+1) 
 ```
 
-You can also inquire about the value of an expression using `>?`
+You can also inquire about the value of an expression using `>`
 
 ```haskell
 module Test where 
