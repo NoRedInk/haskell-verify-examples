@@ -48,3 +48,19 @@ testNoAccessToResult = Just "a"
 -- > test3 ==> result
 test3 :: Maybe [Char]
 test3 = Just "a"
+
+-- |
+--
+-- Setup for examples below:
+--
+-- @
+-- import WithContext
+--
+-- forContext = test4
+-- @
+--
+-- Examples:
+--
+-- > forContext ==> Just "b"
+test4 :: Maybe [Char]
+test4 = Just "b"

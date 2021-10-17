@@ -4,7 +4,7 @@ Module
         { moduleName = Just "WithContext"
         , moduleSource =
             SrcSpanInfo
-              { srcInfoSpan = SrcSpan "test/assets/WithContext.hs" 1 1 51 1
+              { srcInfoSpan = SrcSpan "test/assets/WithContext.hs" 1 1 67 1
               , srcInfoPoints =
                   [ SrcSpan "test/assets/WithContext.hs" 1 1 1 1
                   , SrcSpan "test/assets/WithContext.hs" 2 1 2 1
@@ -17,8 +17,10 @@ Module
                   , SrcSpan "test/assets/WithContext.hs" 33 1 33 1
                   , SrcSpan "test/assets/WithContext.hs" 49 1 49 1
                   , SrcSpan "test/assets/WithContext.hs" 50 1 50 1
-                  , SrcSpan "test/assets/WithContext.hs" 51 1 51 1
-                  , SrcSpan "test/assets/WithContext.hs" 51 1 51 1
+                  , SrcSpan "test/assets/WithContext.hs" 65 1 65 1
+                  , SrcSpan "test/assets/WithContext.hs" 66 1 66 1
+                  , SrcSpan "test/assets/WithContext.hs" 67 1 67 1
+                  , SrcSpan "test/assets/WithContext.hs" 67 1 67 1
                   ]
               }
         , imports =
@@ -74,6 +76,17 @@ Module
                   (VerifiedExample
                      (SrcSpan "test/assets/WithContext.hs" 48 1 48 22)
                      [ "test3 ==> result" ])
+              ]
+          }
+      , Comment
+          { codeBlocks =
+              [ ContextBlock
+                  (SrcSpan "test/assets/WithContext.hs" 56 1 60 5)
+                  [ "import WithContext" , "" , "forContext = test4" ]
+              , ExampleBlock
+                  (VerifiedExample
+                     (SrcSpan "test/assets/WithContext.hs" 64 1 64 29)
+                     [ "forContext ==> Just \"b\"" ])
               ]
           }
       ]

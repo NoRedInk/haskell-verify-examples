@@ -39,7 +39,7 @@ test/assets/WithContext.hs:31
     Variable not in scope: result :: Maybe [Char]
 
 [4mNot all examples verified![m
-Verified: 2
+Verified: 3
 Unverified: 1
   In these files:
   * test/assets/WithContext.hs

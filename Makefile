@@ -16,6 +16,9 @@ clean:
 	rm -rf *.cabal
 	rm -rf ~/haskell-verify-examples.overmind.sock
 
+new-golden-results:
+	rm -rf ./test/golden-results/
+
 watch: clean haskell-verify-examples.cabal
 	OVERMIND_CAN_DIE=cli-smoke-test \
 	SHELL=`which bash` \
@@ -23,3 +26,5 @@ watch: clean haskell-verify-examples.cabal
 	--procfile Procfile \
 	--socket ~/haskell-verify-examples.overmind.sock \
 	--tmux-config /dev/null
+
+watch-new-golden: new-golden-results watch
