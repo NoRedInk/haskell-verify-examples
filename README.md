@@ -43,7 +43,7 @@ Ok [(VerifiedExample (SrcSpan "/private/tmp/DocModule86053-32.hs" 4 1 4 26) ["te
 ```
 
 
-You can also inquire about the value of an expression using `>`
+You can also inquire about the value of an expression using `?`
 
 ```haskell
 module Test where 
