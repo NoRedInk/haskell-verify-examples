@@ -43,6 +43,23 @@ testFunc :: Int -> Int
 testFunc = (+1)
 ```
 
+Code blocks can be introduced using the '@' operator.  These blocks are useful to demonstrate example usage. 
+
+```haskell
+module Test where
+
+-- @
+-- import Test 
+--
+-- x :: Int
+-- x = testFunc $ testFunc $ testFunc 0
+-- @
+-- 
+-- > x ==> 3
+testFunc :: Int -> Int
+testFunc = (+1)
+```
+
 ## Development
 
 1. `$ direnv allow`

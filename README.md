@@ -23,7 +23,7 @@ testFunction = (+1)
 ```
 
 ```
-Ok [(VerifiedExample (SrcSpan "/private/tmp/DocModule86053-31.hs" 4 1 4 26) ["testFunction 1 ==> 2"],ExampleVerifySuccess Verified)]
+Ok [(VerifiedExample (SrcSpan "/private/tmp/DocModule8657-23.hs" 4 1 4 26) ["testFunction 1 ==> 2"],ExampleVerifySuccess Verified)]
 ```
 
 
@@ -39,7 +39,7 @@ testFunction = (+1)
 ```
 
 ```
-Ok [(VerifiedExample (SrcSpan "/private/tmp/DocModule86053-32.hs" 4 1 4 26) ["testFunction 1 ==> 3"],ExampleVerifySuccess (Unverified "2" "3"))]
+Ok [(VerifiedExample (SrcSpan "/private/tmp/DocModule8657-24.hs" 4 1 4 26) ["testFunction 1 ==> 3"],ExampleVerifySuccess (Unverified "2" "3"))]
 ```
 
 
@@ -54,7 +54,29 @@ testFunc = (+1)
 ```
 
 ```
-Ok [(VerifiedExample (SrcSpan "/private/tmp/DocModule86053-33.hs" 3 1 3 16) ["evaluteExampleTodo (","testFunc 1",")"],ExampleVerifySuccess (HelpTodo "2"))]
+Ok [(VerifiedExample (SrcSpan "/private/tmp/DocModule8657-25.hs" 3 1 3 16) ["evaluteExampleTodo (","testFunc 1",")"],ExampleVerifySuccess (HelpTodo "2"))]
+```
+
+
+Code blocks can be introduced using the '@' operator.  These blocks are useful to demonstrate example usage. 
+
+```haskell
+module Test where
+
+-- @
+-- import Test 
+--
+-- x :: Int
+-- x = testFunc $ testFunc $ testFunc 0
+-- @
+-- 
+-- > x ==> 3
+testFunc :: Int -> Int
+testFunc = (+1)
+```
+
+```
+Ok [(VerifiedExample (SrcSpan "/private/tmp/DocModule8657-26.hs" 10 1 10 13) ["x ==> 3"],ExampleVerifySuccess Verified)]
 ```
 
 
