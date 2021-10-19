@@ -1,55 +1,69 @@
 module Main where
 
 import Data.Foldable
-import qualified Data.List as List
-import NriPrelude
+import qualified Data.List
 import qualified Haskell.Verify.Examples as HVE
-import qualified Paths_haskell_verify_examples as DataPath
-import qualified Prelude
+import qualified List
+import NriPrelude
+import qualified Result
+import qualified System.Environment
 import qualified System.IO
 import qualified System.IO.Temp
+import qualified Prelude
 
-isHaskellStartBlock = List.isPrefixOf "```haskell"
-isEndBlock = List.isPrefixOf "```"
-
-runAnonymousBlock :: Prelude.String -> Prelude.IO Prelude.String
-runAnonymousBlock s = do
+verifyAnonymousBlocks :: List Prelude.String -> Prelude.IO ()
+verifyAnonymousBlocks blocks = do
   logHandler <- Platform.silentHandler
   handler <- HVE.handler
-  System.IO.Temp.withSystemTempFile "DocModule.hs" (\filePath handle -> do
-      System.IO.hPutStr handle s
-      System.IO.hClose handle
-      results <- Task.attempt logHandler (do 
-          parsed <- HVE.parse handler filePath
-          cradleInfo <- HVE.tryLoadImplicitCradle handler filePath
-          HVE.verify handler cradleInfo parsed
+  System.IO.Temp.withSystemTempDirectory "DocModules" <| \dirPath -> do
+    results <-
+      blocks
+        |> List.indexedMap (,)
+        |> Prelude.traverse
+          ( \(index, block) -> do
+              let filePath = dirPath ++ "/Example" ++ Prelude.show index ++ ".hs"
+              System.IO.writeFile filePath block
+              Task.attempt
+                logHandler
+                ( do
+                    parsed <- HVE.parse handler filePath
+                    cradleInfo <- HVE.tryLoadImplicitCradle handler filePath
+                    results <- HVE.verify handler cradleInfo parsed
+                    Task.succeed (HVE.moduleInfo parsed, results)
+                )
           )
-      
-      Prelude.return (Prelude.show results)
-      )
+    HVE.report [HVE.Stdout] (combineResults results)
+    Prelude.pure ()
 
-gen :: [Prelude.String] -> Prelude.IO [Prelude.String]
-gen lines = genLine lines
-    where genLine :: [Prelude.String] -> Prelude.IO [Prelude.String]
-          genLine [] = Prelude.return []
-          genLine (l:ls) = fmap (l:) (if isHaskellStartBlock l 
-                                      then genHaskellLine ls []
-                                      else genLine ls)
-         
-          genHaskellLine [] _ = Prelude.return []
-          genHaskellLine (l:ls) code = if isEndBlock l
-                                       then do
-                                           r <- runAnonymousBlock (List.intercalate "\n" code)
-                                           fmap (\ls' -> [l, "", "```", r, "```", ""] ++ ls') (genLine ls)
-                                       else fmap (l:) (genHaskellLine ls (code ++ [l]))
+getBlocks :: List Prelude.String -> List Prelude.String -> Prelude.IO (List Prelude.String)
+getBlocks [] acc = Prelude.pure acc
+getBlocks (l : ls) acc =
+  if isHaskellStartBlock l
+    then haskellBlock ls [] acc
+    else getBlocks ls acc
+  where
+    isHaskellStartBlock l' =
+      -- TODO use a proper markdown parser. Markdown has so many
+      -- edge-cases. This might break in some cases.
+      Data.List.isPrefixOf "```haskell" l
+        || Data.List.isPrefixOf "```hs" l
+    isEndBlock = Data.List.isPrefixOf "```"
+
+    haskellBlock [] code acc = Prelude.pure (code : acc)
+    haskellBlock (l : ls) code acc =
+      if isEndBlock l
+        then getBlocks ls (code : acc)
+        else haskellBlock ls (code ++ "\n" ++ l) acc
 
 main :: Prelude.IO ()
 main = do
-  templatePath <- DataPath.getDataFileName "doc/template.md"
-  readmePath <- DataPath.getDataFileName "README.md"
+  args <- System.Environment.getArgs
+  case args of
+    [] -> Prelude.pure ()
+    readmePath : _ -> do
+      readmeLines <- Prelude.fmap Prelude.lines (Prelude.readFile readmePath)
+      blocks <- getBlocks readmeLines []
+      verifyAnonymousBlocks blocks
 
-  templateLines <- Prelude.fmap Prelude.lines (Prelude.readFile templatePath)
- 
-  readmeLines <- gen templateLines
-
-  Prelude.writeFile readmePath (List.intercalate "\n" readmeLines)
+combineResults :: List (Result x a) -> Result x (List a)
+combineResults = List.foldr (Result.map2 (:)) (Ok [])
