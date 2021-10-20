@@ -411,7 +411,7 @@ toComment cs =
                 |> Ok
                 |> Just
       )
-    |> combineResults
+    |> Prelude.sequence
     |> Result.map Comment
 
 data CommentType
@@ -531,6 +531,7 @@ getPackageDbs :: List Prelude.String -> List PackageDb
 getPackageDbs = getTuples "-package-db" >> coerce
 
 getTuples :: Prelude.String -> List Prelude.String -> List Prelude.String
+getTuples _ [] = []
 getTuples key options =
   List.concat
     [ [l, r]
