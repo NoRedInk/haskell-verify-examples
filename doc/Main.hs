@@ -32,7 +32,7 @@ verifyAnonymousBlocks blocks = do
                     Task.succeed (HVE.moduleInfo parsed, results)
                 )
           )
-    HVE.report [HVE.Stdout] (combineResults results)
+    HVE.report [HVE.Stdout] (Prelude.sequence results)
     Prelude.pure ()
 
 getBlocks :: List Prelude.String -> List Prelude.String -> Prelude.IO (List Prelude.String)
@@ -64,6 +64,3 @@ main = do
       readmeLines <- Prelude.fmap Prelude.lines (Prelude.readFile readmePath)
       blocks <- getBlocks readmeLines []
       verifyAnonymousBlocks blocks
-
-combineResults :: List (Result x a) -> Result x (List a)
-combineResults = List.foldr (Result.map2 (:)) (Ok [])

@@ -411,7 +411,7 @@ toComment cs =
                 |> Ok
                 |> Just
       )
-    |> combineResults
+    |> Prelude.sequence
     |> Result.map Comment
 
 data CommentType
