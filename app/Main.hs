@@ -30,6 +30,7 @@ modes =
     [ verifyMode &= CA.name "verify" &= CA.auto,
       watchMode &= CA.name "watch"
     ]
+    &= CA.program "haskell-verify-examples"
 
 verifyMode :: Mode
 verifyMode =
