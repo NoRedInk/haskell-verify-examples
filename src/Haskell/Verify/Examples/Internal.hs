@@ -105,9 +105,6 @@ moduleFilePath :: ModuleInfo -> Prelude.FilePath
 moduleFilePath =
   LHE.SrcLoc.srcSpanFilename << LHE.SrcLoc.srcInfoSpan << moduleSource
 
-combineResults :: List (Result x a) -> Result x (List a)
-combineResults = List.foldr (Result.map2 (:)) (Ok [])
-
 shimModuleWithImports :: List Text -> ModuleInfo
 shimModuleWithImports imports =
   ModuleInfo
