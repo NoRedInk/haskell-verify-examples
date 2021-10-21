@@ -1,47 +1,78 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+
 module Main where
 
 import qualified Control.Monad
 import qualified Data.Foldable
 import qualified Haskell.Verify.Examples as HVE
 import NriPrelude
+import System.Console.CmdArgs ((&=))
+import qualified System.Console.CmdArgs as CA
+import qualified System.Console.CmdArgs.Quote as CA
 import qualified System.Directory
-import qualified System.Environment
 import System.FilePath.Find ((&&?), (==?))
 import qualified System.FilePath.Find as Find
 import qualified Prelude
-import System.Console.CmdArgs (def, args, modes, (&=), typ, auto, explicit, name, cmdArgsMode, cmdArgsRun, Typeable)
-import Data.Data (Data)
 
-data Sample = Sample { fileName :: [Prelude.FilePath] }
-              deriving (Prelude.Show, Data, Typeable)
+data Mode
+  = Verify
+      { show_todos :: Bool,
+        files :: List Prelude.FilePath
+      }
+  | Watch
+      {show_todos :: Bool}
+  deriving (Prelude.Show, CA.Data, CA.Typeable)
 
-sample = cmdArgsMode (modes [Sample { fileName = def &= args }&= auto &= explicit])
+modes :: Mode
+modes =
+  CA.modes
+    [ verifyMode &= CA.name "verify" &= CA.auto,
+      watchMode &= CA.name "watch"
+    ]
 
+verifyMode :: Mode
+verifyMode =
+  Verify
+    { show_todos = False &= CA.help "Show examples with no expected results.",
+      files = [] &= CA.args &= CA.typ "FILES"
+    }
+
+watchMode :: Mode
+watchMode =
+  Watch
+    { show_todos = False &= CA.help "Show examples with no expected results."
+    }
+
+getMode :: Prelude.IO Mode
+getMode = CA.cmdArgs modes
 
 main :: Prelude.IO ()
 main = do
-  result <- cmdArgsRun sample
-  Prelude.print (result)
-  -- logHandler <- Platform.silentHandler
-  -- handler <- HVE.handler logHandler
-  -- cwd <- System.Directory.getCurrentDirectory
-  -- params <- System.Environment.getArgs
-  -- files <- case params of
-  --   [file] -> Prelude.pure [file]
-  --   [] -> Find.find (noRCS &&? noDist) (Find.extension ==? ".hs") cwd
-  -- results <-
-  --   files
-  --     |> List.map
-  --       ( \modulePath -> do
-  --           parsed <- HVE.parse handler modulePath
-  --           cradleInfo <- HVE.tryLoadImplicitCradle handler modulePath
-  --           results <- HVE.verify handler cradleInfo parsed
-  --           Task.succeed (HVE.moduleInfo parsed, results)
-  --       )
-  --     |> Task.parallel
-  --     |> Task.attempt logHandler
-  -- HVE.report [HVE.Stdout] results
+  mode <- getMode
+  case mode of
+    Watch {show_todos} -> Debug.todo "TODO"
+    Verify {show_todos, files} -> verify show_todos files
+
+verify :: Bool -> List Prelude.FilePath -> Prelude.IO ()
+verify _showTodos files = do
+  logHandler <- Platform.silentHandler
+  handler <- HVE.handler logHandler
+  cwd <- System.Directory.getCurrentDirectory
+  files' <- case files of
+    [] -> Find.find (noRCS &&? noDist) (Find.extension ==? ".hs") cwd
+    xs -> Prelude.pure xs
+  results <-
+    files'
+      |> List.map
+        ( \modulePath -> do
+            parsed <- HVE.parse handler modulePath
+            cradleInfo <- HVE.tryLoadImplicitCradle handler modulePath
+            results <- HVE.verify handler cradleInfo parsed
+            Task.succeed (HVE.moduleInfo parsed, results)
+        )
+      |> Task.parallel
+      |> Task.attempt logHandler
+  HVE.report [HVE.Stdout] results
 
 noRCS :: Find.RecursionPredicate
 noRCS =
