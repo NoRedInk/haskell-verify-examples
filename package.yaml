@@ -96,7 +96,6 @@ default-extensions:
   - OverloadedStrings
   - PartialTypeSignatures
   - ScopedTypeVariables
-  - Strict
   - TypeOperators
   - ExtendedDefaultRules
   - NumericUnderscores
