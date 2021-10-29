@@ -4,11 +4,48 @@ import qualified Control.Monad
 import qualified Data.Foldable
 import qualified Haskell.Verify.Examples as HVE
 import NriPrelude
+import Options.Applicative ((<**>))
+import qualified Options.Applicative as OA
 import qualified System.Directory
 import qualified System.Environment
 import System.FilePath.Find ((&&?), (==?))
 import qualified System.FilePath.Find as Find
+import Prelude ((<>))
 import qualified Prelude
+
+data Options = Options
+  { files :: List Prelude.FilePath,
+    showTodos :: HVE.ShowTodos
+  }
+  deriving (Show)
+
+optionsParser :: OA.Parser Options
+optionsParser =
+  map2
+    Options
+    ( OA.many
+        <| OA.strArgument
+          ( OA.metavar "FILES"
+              <> OA.help "Specific files to verify"
+          )
+    )
+    ( OA.flag
+        HVE.HideTodos
+        HVE.ShowTodos
+        ( OA.long "todos"
+            <> OA.short 't'
+            <> OA.help "Show examples that don't have a verified result yet."
+        )
+    )
+
+optionsInfo :: OA.ParserInfo Options
+optionsInfo =
+  OA.info
+    (optionsParser <**> OA.helper)
+    ( OA.fullDesc
+        <> OA.progDesc "Verify that your examples are correct."
+        <> OA.header "haskell-verify-examples"
+    )
 
 main :: Prelude.IO ()
 main = do
@@ -16,16 +53,17 @@ main = do
   handler <- HVE.handler logHandler
   cwd <- System.Directory.getCurrentDirectory
   params <- System.Environment.getArgs
-  files <- case params of
+  Options {files, showTodos} <- OA.execParser optionsInfo
+  files' <- case files of
     [file] -> Prelude.pure [file]
     [] -> Find.find (noRCS &&? noDist) (Find.extension ==? ".hs") cwd
   results <-
-    files
+    files'
       |> List.map
         ( \modulePath -> do
             parsed <- HVE.parse handler modulePath
             cradleInfo <- HVE.tryLoadImplicitCradle handler modulePath
-            results <- HVE.verify handler cradleInfo parsed
+            results <- HVE.verify handler cradleInfo parsed showTodos
             Task.succeed (HVE.moduleInfo parsed, results)
         )
       |> Task.parallel

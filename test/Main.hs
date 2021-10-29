@@ -59,7 +59,7 @@ tests assets =
                   results <-
                     Expect.succeeds <| do
                       parsed <- HVE.parse handler ("test/assets/" ++ modulePath)
-                      result <- HVE.verify handler Internal.emptyCradleInfo parsed
+                      result <- HVE.verify handler Internal.emptyCradleInfo parsed Internal.ShowTodos
                       Task.succeed (HVE.moduleInfo parsed, result)
                   contents <-
                     withTempFile (\handle -> Reporter.Stdout.report handle (Ok [results]))
@@ -67,7 +67,22 @@ tests assets =
                     |> Expect.equalToContentsOf ("test/golden-results/integration-" ++ Text.fromList modulePath ++ ".hs")
             )
             assets
-        )
+        ),
+      describe
+        "HideTodos"
+        [ test "hides todos" <| \() -> do
+            let modulePath = "test/assets/Simple.hs"
+            handler <- Expect.fromIO (Platform.silentHandler >>= HVE.handler)
+            results <-
+              Expect.succeeds <| do
+                parsed <- HVE.parse handler modulePath
+                result <- HVE.verify handler Internal.emptyCradleInfo parsed Internal.HideTodos
+                Task.succeed (HVE.moduleInfo parsed, result)
+            contents <-
+              withTempFile (\handle -> Reporter.Stdout.report handle (Ok [results]))
+            contents
+              |> Expect.equalToContentsOf ("test/golden-results/hide-todos-" ++ Text.fromList modulePath ++ ".hs")
+        ]
     ]
 
 -- | Provide a temporary file for a test to do some work in, then return the
