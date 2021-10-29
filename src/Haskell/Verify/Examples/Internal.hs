@@ -37,6 +37,9 @@ data EvalError
 
 instance Exception.Exception EvalError
 
+data ShowTodos = ShowTodos | HideTodos
+  deriving (Show)
+
 data Module = Module
   { moduleInfo :: ModuleInfo,
     comments :: List Comment
@@ -100,6 +103,11 @@ exampleVerified :: ExampleResult -> Bool
 exampleVerified (ExampleVerifySuccess Verified) = True
 exampleVerified (ExampleVerifySuccess _) = False
 exampleVerified (ExampleVerifyFailed _) = False
+
+exampleTodo :: ExampleResult -> Bool
+exampleTodo (ExampleVerifySuccess Todo) = True
+exampleTodo (ExampleVerifySuccess _) = False
+exampleTodo (ExampleVerifyFailed _) = False
 
 moduleFilePath :: ModuleInfo -> Prelude.FilePath
 moduleFilePath =

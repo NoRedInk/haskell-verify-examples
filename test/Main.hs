@@ -59,7 +59,7 @@ tests assets =
                   results <-
                     Expect.succeeds <| do
                       parsed <- HVE.parse handler ("test/assets/" ++ modulePath)
-                      result <- HVE.verify handler Internal.emptyCradleInfo parsed
+                      result <- HVE.verify handler Internal.emptyCradleInfo parsed Internal.ShowTodos
                       Task.succeed (HVE.moduleInfo parsed, result)
                   contents <-
                     withTempFile (\handle -> Reporter.Stdout.report handle (Ok [results]))

@@ -14,7 +14,7 @@ import qualified Prelude
 verifyAnonymousBlocks :: List Prelude.String -> Prelude.IO ()
 verifyAnonymousBlocks blocks = do
   logHandler <- Platform.silentHandler
-  handler <- HVE.handler
+  handler <- HVE.handler logHandler
   System.IO.Temp.withSystemTempDirectory "DocModules" <| \dirPath -> do
     results <-
       blocks
@@ -28,7 +28,7 @@ verifyAnonymousBlocks blocks = do
                 ( do
                     parsed <- HVE.parse handler filePath
                     cradleInfo <- HVE.tryLoadImplicitCradle handler filePath
-                    results <- HVE.verify handler cradleInfo parsed
+                    results <- HVE.verify handler cradleInfo parsed HVE.ShowTodos
                     Task.succeed (HVE.moduleInfo parsed, results)
                 )
           )

@@ -15,11 +15,8 @@ import qualified Prelude
 
 data Options = Options
   { files :: List Prelude.FilePath,
-    showTodos :: ShowTodos
+    showTodos :: HVE.ShowTodos
   }
-  deriving (Show)
-
-data ShowTodos = ShowTodos | HideTodos
   deriving (Show)
 
 optionsParser :: OA.Parser Options
@@ -27,14 +24,14 @@ optionsParser =
   map2
     Options
     ( OA.many
-        <| OA.strOption
+        <| OA.strArgument
           ( OA.metavar "FILES"
               <> OA.help "Specific files to verify"
           )
     )
     ( OA.flag
-        HideTodos
-        ShowTodos
+        HVE.HideTodos
+        HVE.ShowTodos
         ( OA.long "todos"
             <> OA.short 't'
             <> OA.help "Show examples that don't have a verified result yet."
@@ -56,9 +53,8 @@ main = do
   handler <- HVE.handler logHandler
   cwd <- System.Directory.getCurrentDirectory
   params <- System.Environment.getArgs
-  options <- OA.execParser optionsInfo
-  let _ = Debug.log "opts" options
-  files' <- case files options of
+  Options {files, showTodos} <- OA.execParser optionsInfo
+  files' <- case files of
     [file] -> Prelude.pure [file]
     [] -> Find.find (noRCS &&? noDist) (Find.extension ==? ".hs") cwd
   results <-
@@ -67,7 +63,7 @@ main = do
         ( \modulePath -> do
             parsed <- HVE.parse handler modulePath
             cradleInfo <- HVE.tryLoadImplicitCradle handler modulePath
-            results <- HVE.verify handler cradleInfo parsed
+            results <- HVE.verify handler cradleInfo parsed showTodos
             Task.succeed (HVE.moduleInfo parsed, results)
         )
       |> Task.parallel

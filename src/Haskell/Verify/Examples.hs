@@ -9,6 +9,7 @@ module Haskell.Verify.Examples
     Module (..),
     ModuleInfo,
     Example,
+    ShowTodos (..),
     verify,
     ExampleResult,
     Reporter (..),
@@ -94,13 +95,13 @@ handler logHandler = do
             )
           |> Platform.doAnything doAnything
 
-  let withTempFile contents go = 
-        (\filePath handle -> do 
-          Foldable.traverse_ (System.IO.hPutStrLn handle) contents
-          System.IO.hClose handle
-          Task.attempt logHandler (go filePath)
+  let withTempFile contents go =
+        ( \filePath handle -> do
+            Foldable.traverse_ (System.IO.hPutStrLn handle) contents
+            System.IO.hClose handle
+            Task.attempt logHandler (go filePath)
         )
-          |> System.IO.Temp.withSystemTempFile "HaskellVerifiedExamples.hs" 
+          |> System.IO.Temp.withSystemTempFile "HaskellVerifiedExamples.hs"
           |> Platform.doAnything doAnything
 
   Prelude.pure
@@ -113,18 +114,25 @@ handler logHandler = do
         runCpphs
       }
 
-verify :: Handler -> CradleInfo -> Module -> Task Error (List (Example, ExampleResult))
-verify handler cradleInfo Module {comments, moduleInfo} =
-  withContext handler moduleInfo comments <| \maybeContext comments' ->
-    comments'
-      |> examples
-      |> List.map
-        ( \example ->
-            verifyExample handler cradleInfo moduleInfo maybeContext example
-              |> Task.map (\verified -> (example, ExampleVerifySuccess verified))
-              |> Task.onError (\err -> Task.succeed (example, ExampleVerifyFailed err))
-        )
-      |> Task.parallel
+verify :: Handler -> CradleInfo -> Module -> ShowTodos -> Task Error (List (Example, ExampleResult))
+verify handler cradleInfo Module {comments, moduleInfo} showTodos =
+  withContext handler moduleInfo comments <| \maybeContext comments' -> do
+    results <-
+      comments'
+        |> examples
+        |> List.map
+          ( \example ->
+              verifyExample handler cradleInfo moduleInfo maybeContext example
+                |> Task.map (\verified -> (example, ExampleVerifySuccess verified))
+                |> Task.onError (\err -> Task.succeed (example, ExampleVerifyFailed err))
+          )
+        |> Task.parallel
+    case showTodos of
+      ShowTodos -> Task.succeed results
+      HideTodos ->
+        results
+          |> List.filter (Tuple.second >> exampleTodo >> not)
+          |> Task.succeed
 
 verifyExample ::
   Handler ->
@@ -310,10 +318,12 @@ withContext handler moduleInfo comments go =
           case contextBlocks comments' of
             [] -> go Nothing comments'
             xs -> do
-              let fileContents = [ ["module " ++ Text.toList contextModuleName ++ " where"],
-                                    List.map renderImport (imports moduleInfo),
-                                    xs
-                                 ] |> List.concat
+              let fileContents =
+                    [ ["module " ++ Text.toList contextModuleName ++ " where"],
+                      List.map renderImport (imports moduleInfo),
+                      xs
+                    ]
+                      |> List.concat
 
               withTempFile handler fileContents (\filePath -> go (Context filePath contextModuleName |> Just) comments')
       )
@@ -515,7 +525,7 @@ report reporters result =
   ]
     |> List.filterMap identity
     |> Async.mapConcurrently_ identity
-    
+
 trimPrefix :: Prelude.String -> Prelude.String -> Maybe Prelude.String
 trimPrefix prefix text =
   if Data.List.isPrefixOf prefix text
