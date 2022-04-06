@@ -5,7 +5,6 @@
 -- Lifted in large part from: https://github.com/stoeffel/tasty-test-reporter
 module Haskell.Verify.Examples.Reporter.Junit
   ( report,
-  testResults
   )
 where
 
@@ -37,15 +36,24 @@ report path result = do
 testResults :: Result Error (List (ModuleInfo, List (Example, ExampleResult))) -> Prelude.IO (List JUnit.TestSuite)
 testResults result =
   case result of
-    Ok passed -> List.indexedMap renderPassed passed
-      |> Prelude.pure
+    Ok passed ->
+      List.concatMap renderPassed passed
+        |> Prelude.pure
     Err err -> Debug.todo ""
 
-renderPassed :: Int -> (ModuleInfo, List (Example, ExampleResult)) -> JUnit.TestSuite
-renderPassed index (moduleInfo, examples) =
-  JUnit.passed (Text.fromInt index)
-    -- |> JUnit.time (duration (Internal.body test))
-    |> JUnit.inSuite (Maybe.withDefault "" (moduleName moduleInfo))
+renderPassed :: (ModuleInfo, List (Example, ExampleResult)) -> List JUnit.TestSuite
+renderPassed (moduleInfo, examples) =
+  examples
+    |> List.map
+      ( \(example, result) ->
+          JUnit.inSuite (Maybe.withDefault "" (moduleName moduleInfo))
+            <| case example of
+              VerifiedExample _ contents ->
+                JUnit.passed (Text.join "\n" <| List.map Text.fromList contents)
+              UnverifiedExample _ contents ->
+                JUnit.passed (Text.join "\n" <| List.map Text.fromList contents)
+      )
+
 --
 --
 -- renderSkipped :: Internal.SingleTest Internal.NotRan -> JUnit.TestSuite
