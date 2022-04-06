@@ -36,92 +36,32 @@ report path result = do
 testResults :: Result Error (List (ModuleInfo, List (Example, ExampleResult))) -> Prelude.IO (List JUnit.TestSuite)
 testResults result =
   case result of
-    Ok passed ->
-      List.concatMap renderPassed passed
+    Ok modules ->
+      List.concatMap renderExamples modules
         |> Prelude.pure
     Err err -> Debug.todo ""
 
-renderPassed :: (ModuleInfo, List (Example, ExampleResult)) -> List JUnit.TestSuite
-renderPassed (moduleInfo, examples) =
-  examples
-    |> List.map
-      ( \(example, result) ->
-          JUnit.inSuite (Maybe.withDefault "" (moduleName moduleInfo))
-            <| case example of
-              VerifiedExample _ contents ->
-                JUnit.passed (Text.join "\n" <| List.map Text.fromList contents)
-              UnverifiedExample _ contents ->
-                JUnit.passed (Text.join "\n" <| List.map Text.fromList contents)
-      )
+renderExamples :: (ModuleInfo, List (Example, ExampleResult)) -> List JUnit.TestSuite
+renderExamples (moduleInfo, examples) =
+  List.map (renderExample moduleInfo) examples
 
---
---
--- renderSkipped :: Internal.SingleTest Internal.NotRan -> JUnit.TestSuite
--- renderSkipped test =
---   JUnit.skipped (Internal.name test)
---     |> JUnit.inSuite (suiteName test)
---
--- renderFailed ::
---   Internal.SingleTest (Platform.TracingSpan, Internal.Failure) ->
---   Maybe (Stack.SrcLoc, BS.ByteString) ->
---   JUnit.TestSuite
--- renderFailed test maybeSrcLoc =
---   case Internal.body test of
---     (tracingSpan, Internal.FailedAssertion msg _) ->
---       let msg' = case maybeSrcLoc of
---             Nothing -> msg
---             Just (loc, src) ->
---               Test.Reporter.Internal.renderSrcLoc loc src
---                 |> Text.Colour.renderChunksBS Text.Colour.WithoutColours
---                 |> TE.decodeUtf8
---                 |> (\srcStr -> srcStr ++ "\n" ++ msg)
---        in JUnit.failed (Internal.name test)
---             |> JUnit.stderr msg'
---             |> ( case stackFrame test of
---                    Nothing -> identity
---                    Just frame -> JUnit.failureStackTrace [frame]
---                )
---             |> JUnit.time (duration tracingSpan)
---             |> JUnit.inSuite (suiteName test)
---     (tracingSpan, Internal.ThrewException err) ->
---       JUnit.errored (Internal.name test)
---         |> JUnit.errorMessage "This test threw an exception."
---         |> JUnit.stderr (Data.Text.pack (Exception.displayException err))
---         |> ( case stackFrame test of
---                Nothing -> identity
---                Just frame -> JUnit.errorStackTrace [frame]
---            )
---         |> JUnit.time (duration tracingSpan)
---         |> JUnit.inSuite (suiteName test)
---     (tracingSpan, Internal.TookTooLong) ->
---       JUnit.errored (Internal.name test)
---         |> JUnit.errorMessage "This test timed out."
---         |> ( case stackFrame test of
---                Nothing -> identity
---                Just frame -> JUnit.errorStackTrace [frame]
---            )
---         |> JUnit.time (duration tracingSpan)
---         |> JUnit.inSuite (suiteName test)
---     (tracingSpan, Internal.TestRunnerMessedUp msg) ->
---       JUnit.errored (Internal.name test)
---         |> JUnit.errorMessage
---           ( Text.join
---               "\n"
---               [ "Test runner encountered an unexpected error:",
---                 msg,
---                 "",
---                 "This is a bug.",
---                 "If you have some time to report the bug it would be much appreciated!",
---                 "You can do so here: https://github.com/NoRedInk/haskell-libraries/issues"
---               ]
---           )
---         |> ( case stackFrame test of
---                Nothing -> identity
---                Just frame -> JUnit.errorStackTrace [frame]
---            )
---         |> JUnit.time (duration tracingSpan)
---         |> JUnit.inSuite (suiteName test)
---
+renderExample :: ModuleInfo -> (Example, ExampleResult) -> JUnit.TestSuite
+renderExample moduleInfo (example, result) =
+  case example of
+    VerifiedExample _ contents ->
+      case result of
+        ExampleVerifySuccess _ ->
+          JUnit.passed (Text.join "\n" <| List.map Text.fromList contents)
+            |> inSuite
+        ExampleVerifyFailed evalFailed ->
+          JUnit.failed (Debug.toString evalFailed)
+            |> inSuite
+    UnverifiedExample _ contents ->
+      JUnit.passed (Text.join "\n" <| List.map Text.fromList contents)
+        |> inSuite
+  where
+    inSuite = JUnit.inSuite (Maybe.withDefault "No module name" (moduleName moduleInfo))
+
 -- suiteName :: Internal.SingleTest a -> Text
 -- suiteName test =
 --   Internal.describes test
