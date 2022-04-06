@@ -1,0 +1,1 @@
+<?xml version="1.0" encoding="UTF-8"?><testsuites errors="0" failures="0" skipped="0" tests="1" time="0.0"><testsuite errors="0" failures="0" name="Simple" skipped="0" tests="1" time="0.0"><testcase name="0"/></testsuite></testsuites>
