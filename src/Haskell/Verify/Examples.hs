@@ -195,9 +195,9 @@ evalIO ::
   Maybe Context ->
   Prelude.String ->
   Prelude.IO Verified
-evalIO CradleInfo {packageDbs, languageExtensions, importPaths} moduleInfo maybeContext s = do
+evalIO CradleInfo {packageIds, packageDbs, languageExtensions, importPaths} moduleInfo maybeContext s = do
   let interpreter =
-        case coerce packageDbs of
+        case coerce packageIds ++ coerce packageDbs of
           [] -> Hint.runInterpreter
           args -> Hint.Unsafe.unsafeRunInterpreterWithArgs args
   result <-
@@ -280,9 +280,10 @@ tryLoadImplicitCradle handler path =
     let componentRoot = HIE.Bios.Types.componentRoot componentOptions
     Task.succeed
       CradleInfo
-        { languageExtensions = getDefaultLanguageExtensions opts,
-          importPaths = getSearchPaths opts,
-          packageDbs = getPackageDbs opts
+        { languageExtensions = List.map LanguageExtension (getDefaultLanguageExtensions opts),
+          importPaths = List.map ImportPath (getSearchPaths opts),
+          packageDbs = List.map PackageDb (getPackageDbs opts),
+          packageIds = List.map PackageId (getPackageIds opts)
         }
 
 examples :: Comment -> List Example
@@ -532,14 +533,17 @@ trimPrefix prefix text =
     then Just <| Data.List.drop (Prelude.length prefix) text
     else Nothing
 
-getSearchPaths :: List Prelude.String -> List ImportPath
-getSearchPaths = List.filterMap (trimPrefix "-i") >> coerce
+getSearchPaths :: List Prelude.String -> List Prelude.String
+getSearchPaths = List.filterMap <| trimPrefix "-i"
 
-getDefaultLanguageExtensions :: List Prelude.String -> List LanguageExtension
-getDefaultLanguageExtensions = List.filterMap (trimPrefix "-X") >> coerce
+getDefaultLanguageExtensions :: List Prelude.String -> List Prelude.String
+getDefaultLanguageExtensions = List.filterMap <| trimPrefix "-X"
 
-getPackageDbs :: List Prelude.String -> List PackageDb
-getPackageDbs = getTuples "-package-db" >> coerce
+getPackageDbs :: List Prelude.String -> List Prelude.String
+getPackageDbs = getTuples "-package-db"
+
+getPackageIds :: List Prelude.String -> List Prelude.String
+getPackageIds = getTuples "-package-id"
 
 getTuples :: Prelude.String -> List Prelude.String -> List Prelude.String
 getTuples _ [] = []
