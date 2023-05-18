@@ -1,10 +1,12 @@
 module Main (main) where
 
+import qualified Conduit
 import qualified Control.Concurrent.Async as Async
 import qualified Data.Text.IO
 import qualified Expect
 import qualified Haskell.Verify.Examples as HVE
 import qualified Haskell.Verify.Examples.Internal as Internal
+import qualified Haskell.Verify.Examples.Reporter.Junit as Reporter.Junit
 import qualified Haskell.Verify.Examples.Reporter.Stdout as Reporter.Stdout
 import qualified Language.Haskell.Exts.SrcLoc as LHE.SrcLoc
 import qualified System.Directory as Directory
@@ -82,6 +84,23 @@ tests assets =
               withTempFile (\handle -> Reporter.Stdout.report handle (Ok [results]))
             contents
               |> Expect.equalToContentsOf ("test/golden-results/hide-todos-" ++ Text.fromList modulePath ++ ".hs")
+        ],
+      describe
+        "junit"
+        [ test "junit" <| \() -> do
+            let modulePath = "test/assets/Simple.hs"
+            handler <- Expect.fromIO (Platform.silentHandler >>= HVE.handler)
+            results <-
+              Expect.succeeds <| do
+                parsed <- HVE.parse handler modulePath
+                result <- HVE.verify handler Internal.emptyCradleInfo parsed Internal.HideTodos
+                Task.succeed (HVE.moduleInfo parsed, result)
+            let reportPath = "./nri-haskell-libraries-junit-report"
+            contents <-
+              withReportFile <| \reportPath ->
+                Reporter.Junit.report reportPath (Ok [results])
+            contents
+              |> Expect.equalToContentsOf ("test/golden-results/junit-" ++ Text.fromList modulePath ++ ".hs")
         ]
     ]
 
@@ -95,3 +114,14 @@ withTempFile go =
     go handle
     System.IO.hClose handle
     Data.Text.IO.readFile path
+
+withReportFile :: (Prelude.FilePath -> Prelude.IO ()) -> Expect.Expectation' Text
+withReportFile go =
+  Expect.fromIO
+    <| Conduit.withAcquire reportFile
+    <| \path -> do
+      go path
+      Data.Text.IO.readFile path
+
+reportFile :: Conduit.Acquire Prelude.FilePath
+reportFile = Conduit.mkAcquire (Prelude.pure "./golden-results/junit-report") Directory.removeFile
